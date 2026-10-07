@@ -2,17 +2,17 @@
 
 ## Project Overview
 
-A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly eight parts. This checkout implements **Part 1: Project Foundation** only.
+A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1 and 2: Project Foundation and Backend Authentication**.
 
 ## Features
 
-Implemented: responsive starting screen, React Router navigation, live API health check with loading/error/retry states, Express API, and MongoDB connection configuration.
+Implemented: responsive starting screen, React Router navigation, live API health check with loading/error/retry states, Express API, MongoDB connection configuration, and backend registration/login with JWT-protected user lookup.
 
-Planned for Parts 2–8: authentication, transactions, monthly budgets, dashboard and charts, validation, pagination, CSV export, and submission documentation.
+Planned for Parts 3–9: frontend authentication, transactions, monthly budgets, dashboard and charts, validation, pagination, CSV export, and submission documentation.
 
 ## Technologies Used
 
-JavaScript, React, Vite, Tailwind CSS, React Router, Node.js, Express, MongoDB, and Mongoose. bcryptjs and jsonwebtoken are installed for Part 2. No authentication is implemented yet.
+JavaScript, React, Vite, Tailwind CSS, React Router, Node.js, Express, MongoDB, and Mongoose. bcryptjs hashes passwords and jsonwebtoken signs and verifies backend authentication tokens. Frontend authentication arrives in Part 5.
 
 ## Project Structure
 
@@ -30,7 +30,7 @@ backend/
 README.md
 ```
 
-Empty folders contain `.gitkeep` files so Git preserves the intended structure. No application models exist in Part 1.
+Empty folders contain `.gitkeep` files so Git preserves the intended structure. Part 2 adds the User model; transaction and budget models come later.
 
 ## Installation
 
@@ -54,7 +54,7 @@ JWT_SECRET=
 CLIENT_URL=http://localhost:5173
 ```
 
-`JWT_SECRET` is intentionally empty and unused in Part 1. Before Part 2, generate a private value using `node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"` and save it only in `backend/.env`. Never commit it. Replace MONGODB_URI if using Atlas; do not put credentials in `.env.example`.
+`JWT_SECRET` must contain a private random value of at least 32 characters. On a fresh setup, generate a private value using `node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"` and save it only in `backend/.env`. Never commit it. Replace MONGODB_URI if using Atlas; do not put credentials in `.env.example`.
 
 `frontend/.env`:
 
@@ -114,7 +114,7 @@ node --check backend/app.js
 node --check backend/config/db.js
 ```
 
-Confirm the startup log reports MongoDB connected. Check the page at desktop, tablet, and 320px widths; the card should stack and text should fit. Open `/missing` and use Return home to verify routing. Stop the backend, click Check connection, confirm the error state, then restart and retry. No authentication or financial functionality should be expected yet.
+Confirm the startup log reports MongoDB connected. Check the page at desktop, tablet, and 320px widths; the card should stack and text should fit. Open `/missing` and use Return home to verify routing. Stop the backend, click Check connection, confirm the error state, then restart and retry. Backend authentication is available; the frontend remains the Part 1 starting screen. Financial functionality comes later.
 
 Common errors:
 
@@ -123,8 +123,7 @@ Common errors:
 - API unreachable/CORS: check both environment files, start both servers, and use the exact frontend origin configured in CLIENT_URL.
 - Unsupported Node engine: use Node.js 22.12+.
 - PowerShell blocks npm.ps1: use the documented `npm.cmd` commands.
-- Windows reports `Budget is not recognized`: the project path contains `&`, which can break the npm-generated Vite command shim. The supplied npm scripts invoke Vite through Node directly to support this path.
-- Git reports dubious ownership after sandbox initialization: use `git -c safe.directory="D:/Gamage Projects/Expense & Budget Tracker" status` (and the same `-c` option for add/commit) for this known workspace, without changing global Git settings.
+- Git reports dubious ownership after sandbox initialization: use `git -c safe.directory="D:/Gamage Projects/expense-budget-tracker" status` (and the same `-c` option for add/commit) for this known workspace, without changing global Git settings.
 
 ## Git Workflow
 
@@ -148,4 +147,33 @@ The assignment author's name will be supplied during submission preparation.
 
 ## Development Progress
 
-Part 1 foundation implemented. Part 2 will add the User model, registration/login, password hashing, JWT generation, and protected `/api/auth/me`. Wait for explicit `continue` before beginning the next part.
+Parts 1 and 2 implemented (2/9). Next: Part 3 transaction APIs, search, filters, and ownership protection. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
+
+## Backend Authentication (Part 2)
+
+- `POST /api/auth/register`: JSON `{ "name": "Demo User", "email": "demo@example.com", "password": "ExamplePass123!" }`; returns 201 with `data.user` and `data.token`.
+- `POST /api/auth/login`: JSON email and password; returns 200 with the same safe user/token shape. Invalid credentials return 401.
+- `GET /api/auth/me`: send `Authorization: Bearer <token>`; returns 200 with `data.user`, or 401 for missing, invalid, expired tokens or deleted users.
+
+Emails are trimmed and lowercased, with a unique MongoDB index. Names are 1–100 trimmed characters; passwords require at least 8 characters and at most 72 UTF-8 bytes (bcrypt's input limit). Passwords are hashed with bcrypt cost 12 and omitted from responses. JWTs use HS256 and expire after one day. Registration rejects duplicate emails with 409, including concurrent requests. Validation failures return 400. Unexpected failures return a generic 500 response.
+
+Run the repeatable integration suite from the project root:
+
+```powershell
+npm.cmd test --prefix backend
+```
+
+Tests use the configured MongoDB server but a unique `expense_tracker_auth_test_...` database, then remove only that database. The MongoDB account must permit creation and deletion of the test database. Application data is not used. Tests cover registration/login, validation, duplicate races, password hashing, safe responses, token failures, deleted users, health, and error handling.
+
+Manual PowerShell verification (start the backend first; use a fresh email for registration):
+
+```powershell
+$body = @{ name = 'Demo User'; email = 'demo@example.com'; password = 'ExamplePass123!' } | ConvertTo-Json
+$registration = Invoke-RestMethod -Method Post -Uri http://localhost:5000/api/auth/register -ContentType 'application/json' -Body $body
+$credentials = @{ email = 'demo@example.com'; password = 'ExamplePass123!' } | ConvertTo-Json
+$login = Invoke-RestMethod -Method Post -Uri http://localhost:5000/api/auth/login -ContentType 'application/json' -Body $credentials
+Invoke-RestMethod -Uri http://localhost:5000/api/auth/me -Headers @{ Authorization = "Bearer $($login.data.token)" }
+curl.exe -i http://localhost:5000/api/auth/me
+```
+
+Expected: registration succeeds, login returns a token, authenticated lookup returns only safe user fields, and the final unauthenticated call returns 401. Keep tokens private. A repeated registration email returns 409. If startup fails, check that JWT_SECRET is set, MongoDB is reachable, and the user email index can be created. No login page is expected until Part 5.
