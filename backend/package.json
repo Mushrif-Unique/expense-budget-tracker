@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
-    "test": "node tests/auth.test.js"
+    "test": "node tests/auth.test.js && node tests/transactions.test.js",
+    "test:transactions": "node tests/transactions.test.js"
   },
   "engines": {
     "node": ">=22.12.0"

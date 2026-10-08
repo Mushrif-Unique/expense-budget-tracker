@@ -2,13 +2,13 @@
 
 ## Project Overview
 
-A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1 and 2: Project Foundation and Backend Authentication**.
+A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1–3: Project Foundation, Backend Authentication, and Transaction APIs**.
 
 ## Features
 
-Implemented: responsive starting screen, React Router navigation, live API health check with loading/error/retry states, Express API, MongoDB connection configuration, and backend registration/login with JWT-protected user lookup.
+Implemented: responsive starting screen, React Router navigation, live API health check with loading/error/retry states, Express API, MongoDB connection configuration, and backend registration/login with JWT-protected user lookup, and user-owned income/expense APIs with search and filters.
 
-Planned for Parts 3–9: frontend authentication, transactions, monthly budgets, dashboard and charts, validation, pagination, CSV export, and submission documentation.
+Planned for Parts 4–9: frontend authentication and transaction UI, monthly budgets, dashboard and charts, validation, pagination, CSV export, and submission documentation.
 
 ## Technologies Used
 
@@ -30,7 +30,7 @@ backend/
 README.md
 ```
 
-Empty folders contain `.gitkeep` files so Git preserves the intended structure. Part 2 adds the User model; transaction and budget models come later.
+Empty folders contain `.gitkeep` files so Git preserves the intended structure. Part 2 adds the User model and Part 3 adds the Transaction model. The Budget model comes in Part 4.
 
 ## Installation
 
@@ -114,7 +114,7 @@ node --check backend/app.js
 node --check backend/config/db.js
 ```
 
-Confirm the startup log reports MongoDB connected. Check the page at desktop, tablet, and 320px widths; the card should stack and text should fit. Open `/missing` and use Return home to verify routing. Stop the backend, click Check connection, confirm the error state, then restart and retry. Backend authentication is available; the frontend remains the Part 1 starting screen. Financial functionality comes later.
+Confirm the startup log reports MongoDB connected. Check the page at desktop, tablet, and 320px widths; the card should stack and text should fit. Open `/missing` and use Return home to verify routing. Stop the backend, click Check connection, confirm the error state, then restart and retry. Backend authentication is available; the frontend remains the Part 1 starting screen. Transaction APIs are available; financial pages come later.
 
 Common errors:
 
@@ -147,7 +147,7 @@ The assignment author's name will be supplied during submission preparation.
 
 ## Development Progress
 
-Parts 1 and 2 implemented (2/9). Next: Part 3 transaction APIs, search, filters, and ownership protection. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
+Parts 1–3 implemented (3/9). Next: Part 4 monthly budgets and dashboard backend. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
 
 ## Backend Authentication (Part 2)
 
@@ -177,3 +177,66 @@ curl.exe -i http://localhost:5000/api/auth/me
 ```
 
 Expected: registration succeeds, login returns a token, authenticated lookup returns only safe user fields, and the final unauthenticated call returns 401. Keep tokens private. A repeated registration email returns 409. If startup fails, check that JWT_SECRET is set, MongoDB is reachable, and the user email index can be created. No login page is expected until Part 5.
+
+## Transaction APIs (Part 3)
+
+Every endpoint requires `Authorization: Bearer <token>`. The authenticated user owns every operation. A transaction belonging to another user returns the same 404 response as a missing transaction.
+
+| Method | Route | Result |
+| --- | --- | --- |
+| GET | /api/transactions | 200, `data.transactions` |
+| POST | /api/transactions | 201, `data.transaction` |
+| GET | /api/transactions/:id | 200, `data.transaction` |
+| PUT | /api/transactions/:id | 200, `data.transaction` |
+| DELETE | /api/transactions/:id | 200, `data: null` |
+
+Create and update accept the following complete payload (description may be omitted):
+
+```json
+{
+  "type": "expense",
+  "amount": 125.50,
+  "category": "Food",
+  "description": "Lunch",
+  "date": "2026-10-07"
+}
+```
+
+Type must be `income` or `expense`. Amount must be a finite JSON number greater than zero, not a quoted number. Category is required and limited to 100 trimmed characters. Description is optional and limited to 1000 trimmed characters. Dates must be real calendar dates in `YYYY-MM-DD` format; they are stored as UTC midnight. When displaying dates later, preserve the calendar date rather than shifting it into a local timezone. PUT replaces all editable fields; omitted description becomes empty text. User IDs, timestamps, database operators, and other extra fields are rejected.
+
+Transactions are ordered by date descending, then ID descending. Search is a case-insensitive literal substring match on description or category. Category filtering is a case-insensitive exact match. Filters can be combined:
+
+```text
+/api/transactions?search=lunch&type=expense&category=Food
+```
+
+Blank search/category values are ignored. Invalid or repeated filter values return 400. Pagination is deferred to Part 8; unknown query keys are rejected. Empty results return an empty array. Malformed IDs return 400; missing/other-user IDs return 404. Unauthorized calls return 401. These APIs are intended for the Part 6 frontend transaction page.
+
+### Part 3 verification
+
+From the project root:
+
+```powershell
+npm.cmd test --prefix backend
+npm.cmd run test:transactions --prefix backend
+npm.cmd run build --prefix frontend
+```
+
+The full test command runs authentication and transaction suites; the second command runs only transaction checks when needed. Each suite uses a uniquely named temporary database and removes only its own database afterward. Tests cover two-user isolation, all CRUD operations, combined filters, literal regex characters, validation, malformed IDs, unknown IDs, and attempts to supply ownership fields.
+
+For manual checks, start the backend with `npm.cmd run dev --prefix backend`, then log in using the authentication instructions above. With `$login` populated, run:
+
+```powershell
+$headers = @{ Authorization = "Bearer $($login.data.token)" }
+$body = @{ type = 'expense'; amount = 125.50; category = 'Food'; description = 'Lunch'; date = '2026-10-07' } | ConvertTo-Json
+$created = Invoke-RestMethod -Method Post -Uri http://localhost:5000/api/transactions -Headers $headers -ContentType 'application/json' -Body $body
+$transactionId = $created.data.transaction._id
+Invoke-RestMethod -Uri "http://localhost:5000/api/transactions/$transactionId" -Headers $headers
+Invoke-RestMethod -Uri 'http://localhost:5000/api/transactions?search=lunch&type=expense&category=Food' -Headers $headers
+$updated = @{ type = 'expense'; amount = 150; category = 'Food'; description = 'Updated lunch'; date = '2026-10-07' } | ConvertTo-Json
+Invoke-RestMethod -Method Put -Uri "http://localhost:5000/api/transactions/$transactionId" -Headers $headers -ContentType 'application/json' -Body $updated
+# Deletes only the demonstration transaction created above.
+Invoke-RestMethod -Method Delete -Uri "http://localhost:5000/api/transactions/$transactionId" -Headers $headers
+```
+
+Repeat lookup/update/delete with a second account's token before deleting to confirm 404 and that the first user's record remains unchanged. Do not put tokens or database credentials in Git. No additional dependency installation or environment variables are needed for Part 3.
