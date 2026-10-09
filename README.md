@@ -2,13 +2,13 @@
 
 ## Project Overview
 
-A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1–3: Project Foundation, Backend Authentication, and Transaction APIs**.
+A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1–4: Foundation, Authentication, Transaction APIs, and Budget/Dashboard Backend**.
 
 ## Features
 
-Implemented: responsive starting screen, React Router navigation, live API health check with loading/error/retry states, Express API, MongoDB connection configuration, and backend registration/login with JWT-protected user lookup, and user-owned income/expense APIs with search and filters.
+Implemented: responsive starting screen, React Router navigation, live API health check with loading/error/retry states, Express API, MongoDB connection configuration, and backend registration/login with JWT-protected user lookup, and user-owned income/expense APIs with search and filters, monthly budgets, and dashboard summary calculations.
 
-Planned for Parts 4–9: frontend authentication and transaction UI, monthly budgets, dashboard and charts, validation, pagination, CSV export, and submission documentation.
+Planned for Parts 5–9: frontend authentication, transaction and budget pages, dashboard and charts, validation, pagination, CSV export, and submission documentation.
 
 ## Technologies Used
 
@@ -24,13 +24,13 @@ frontend/
     App.jsx main.jsx index.css
   .env.example index.html package.json vite.config.js
 backend/
-  config/ controllers/ middleware/ models/ routes/ utils/
+  config/ controllers/ middleware/ models/ routes/ services/ utils/
   .env.example app.js server.js package.json
 .gitignore
 README.md
 ```
 
-Empty folders contain `.gitkeep` files so Git preserves the intended structure. Part 2 adds the User model and Part 3 adds the Transaction model. The Budget model comes in Part 4.
+Empty folders contain `.gitkeep` files so Git preserves the intended structure. Part 2 adds the User model and Part 3 adds the Transaction model. Part 4 adds the Budget model and shared budget calculation service.
 
 ## Installation
 
@@ -147,7 +147,7 @@ The assignment author's name will be supplied during submission preparation.
 
 ## Development Progress
 
-Parts 1–3 implemented (3/9). Next: Part 4 monthly budgets and dashboard backend. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
+Parts 1–4 implemented (4/9). Next: Part 5 frontend authentication, protected routes, and application layout. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
 
 ## Backend Authentication (Part 2)
 
@@ -240,3 +240,63 @@ Invoke-RestMethod -Method Delete -Uri "http://localhost:5000/api/transactions/$t
 ```
 
 Repeat lookup/update/delete with a second account's token before deleting to confirm 404 and that the first user's record remains unchanged. Do not put tokens or database credentials in Git. No additional dependency installation or environment variables are needed for Part 3.
+
+## Budgets and Dashboard (Part 4)
+
+All three endpoints require the user's Bearer token:
+
+| Method | Route | Result |
+| --- | --- | --- |
+| GET | /api/budgets/current | 200, `data.budget` |
+| PUT | /api/budgets/current | 200, `data.budget` (create or update) |
+| GET | /api/dashboard/summary | 200, dashboard fields in `data` |
+
+PUT accepts only `{ "amount": 50000 }`. Amount must be a finite JSON number greater than or equal to zero. The server determines the user, month, and year; supplying these in the body is rejected with 400. A unique user/month/year database index prevents duplicates, including concurrent first saves. Startup waits for the budget index to be ready. No new packages or environment values are required.
+
+The current month uses **UTC calendar boundaries**, from the first day inclusive to the next month's first day exclusive, matching the UTC calendar dates stored by the transaction API. This does not depend on the computer's timezone. Only expenses dated in this month count toward the budget; income and other months are excluded.
+
+Example budget response fields:
+
+```json
+{
+  "isSet": true,
+  "month": 10,
+  "year": 2026,
+  "amount": 50000,
+  "monthlyExpenses": 30000,
+  "remaining": 20000,
+  "overspent": 0,
+  "progressPercentage": 60
+}
+```
+
+No saved budget returns `isSet: false`, null amount/remaining/progress, zero overspent, and the actual monthly expenses. A saved zero budget returns `isSet: true`, amount 0 and progress 0; spending is still reported as overspent and negative remaining. For positive budgets, progress may exceed 100%; the future UI should cap only the visual bar. Example: 30000 spent against 25000 returns remaining -5000, overspent 5000, and progress 120.
+
+Dashboard fields are `totalIncome`, `totalExpenses`, `balance`, `recentTransactions`, `expensesByCategory`, and `budget`. Totals and category sums cover **all recorded transaction dates**, including future-dated records; only the nested budget is current-month-specific. Balance is income minus expenses. Recent transactions contain at most five records sorted by transaction date descending, with ID descending for ties. Category entries contain `category` and `total`, use the stored category labels, and sort by total descending. Empty accounts return zero totals and empty arrays. All reads and aggregations are scoped to the authenticated user.
+
+MongoDB sums amounts as decimals before returning totals rounded to two decimal places. Remaining, balance, and budget percentage are also rounded to two decimals. Numeric amounts remain JSON numbers, consistent with Part 3.
+
+### Part 4 verification
+
+From the project root, with MongoDB running:
+
+```powershell
+npm.cmd test --prefix backend
+# To run only the budget/dashboard suite:
+npm.cmd run test:budgets --prefix backend
+npm.cmd run build --prefix frontend
+```
+
+Tests use isolated, uniquely named temporary databases and delete only their own test databases. They cover empty accounts, invalid budgets, no-token/invalid-token requests, create/update, zero budgets, overspending, concurrent saves, uniqueness, monthly boundaries, December/January rollover, leap-year boundaries, decimal sums, dashboard totals, category totals, recent-date order, and user isolation.
+
+Manual API checks after logging in as described above:
+
+```powershell
+$headers = @{ Authorization = "Bearer $($login.data.token)" }
+Invoke-RestMethod -Uri http://localhost:5000/api/budgets/current -Headers $headers
+$body = @{ amount = 50000 } | ConvertTo-Json
+Invoke-RestMethod -Method Put -Uri http://localhost:5000/api/budgets/current -Headers $headers -ContentType 'application/json' -Body $body
+Invoke-RestMethod -Uri http://localhost:5000/api/dashboard/summary -Headers $headers
+```
+
+Create current-month transactions using Part 3's examples and verify the totals manually. Repeating PUT updates the same monthly record. Test with a second account to confirm its totals/budget are separate. If startup reports an index error, check database permissions and any duplicate existing user/month/year budget documents; do not delete application data blindly. Budget/dashboard pages are scheduled for Part 7.

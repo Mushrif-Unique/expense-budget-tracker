@@ -4,6 +4,7 @@ import { createApp } from './app.js';
 import { connectDatabase } from './config/db.js';
 import { validateJwtSecret } from './utils/jwt.js';
 import User from './models/User.js';
+import Budget from './models/Budget.js';
 
 dotenv.config({ quiet: true });
 
@@ -18,7 +19,7 @@ async function startServer() {
 
   validateJwtSecret();
   await connectDatabase();
-  await User.init();
+  await Promise.all([User.init(), Budget.init()]);
   const server = createApp().listen(port, () => {
     console.info(`Expense & Budget Tracker API listening on port ${port}.`);
   });
@@ -40,7 +41,7 @@ async function startServer() {
 }
 
 startServer().catch(async (error) => {
-  console.error('Backend startup failed. Check environment settings, MongoDB availability, and user index configuration.');
+  console.error('Backend startup failed. Check environment settings, MongoDB availability, and database index configuration.');
   await mongoose.disconnect();
   process.exitCode = 1;
 });
