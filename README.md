@@ -2,17 +2,17 @@
 
 ## Project Overview
 
-A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1–4: Foundation, Authentication, Transaction APIs, and Budget/Dashboard Backend**.
+A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1–5: Backend APIs and Frontend Authentication/Layout**.
 
 ## Features
 
-Implemented: responsive starting screen, React Router navigation, live API health check with loading/error/retry states, Express API, MongoDB connection configuration, and backend registration/login with JWT-protected user lookup, and user-owned income/expense APIs with search and filters, monthly budgets, and dashboard summary calculations.
+Implemented: responsive login/registration pages, persistent authentication, protected application layout and navigation, logout, Express API, MongoDB connection configuration, backend authentication, user-owned transaction APIs with search and filters, monthly budgets, and dashboard calculations.
 
-Planned for Parts 5–9: frontend authentication, transaction and budget pages, dashboard and charts, validation, pagination, CSV export, and submission documentation.
+Planned for Parts 6–9: transaction and budget pages, dashboard and charts, validation, pagination, CSV export, and submission documentation.
 
 ## Technologies Used
 
-JavaScript, React, Vite, Tailwind CSS, React Router, Node.js, Express, MongoDB, and Mongoose. bcryptjs hashes passwords and jsonwebtoken signs and verifies backend authentication tokens. Frontend authentication arrives in Part 5.
+JavaScript, React, Vite, Tailwind CSS, React Router, Node.js, Express, MongoDB, and Mongoose. bcryptjs hashes passwords and jsonwebtoken signs and verifies backend authentication tokens. Frontend authentication is implemented in Part 5.
 
 ## Project Structure
 
@@ -84,7 +84,7 @@ cd frontend
 npm.cmd run dev
 ```
 
-Open http://localhost:5173. The screen should be styled with a pale background, green accents, and a responsive foundation card. The backend health message appears after the live request completes.
+Open http://localhost:5173. Guests are redirected to the sign-in page. Register or sign in to open the protected workspace. Financial pages are staged for Parts 6–7; no financial values are fabricated.
 
 Tailwind CSS uses `@tailwindcss/vite` in `vite.config.js` and `@import "tailwindcss"` in `src/index.css`; no separate Tailwind configuration file is required for this setup.
 
@@ -114,7 +114,7 @@ node --check backend/app.js
 node --check backend/config/db.js
 ```
 
-Confirm the startup log reports MongoDB connected. Check the page at desktop, tablet, and 320px widths; the card should stack and text should fit. Open `/missing` and use Return home to verify routing. Stop the backend, click Check connection, confirm the error state, then restart and retry. Backend authentication is available; the frontend remains the Part 1 starting screen. Transaction APIs are available; financial pages come later.
+Confirm the startup log reports MongoDB connected. Check registration, login, refresh persistence, mobile navigation, logout, and protected-route redirects. Open `/missing` and use Return home. Test at 320px, tablet, and desktop widths. During an API outage, restoring a saved session shows retry and sign-in options.
 
 Common errors:
 
@@ -147,7 +147,7 @@ The assignment author's name will be supplied during submission preparation.
 
 ## Development Progress
 
-Parts 1–4 implemented (4/9). Next: Part 5 frontend authentication, protected routes, and application layout. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
+Parts 1–5 implemented (5/9). Next: Part 6 transaction UI: create, edit, delete, history, search, and filters. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
 
 ## Backend Authentication (Part 2)
 
@@ -176,7 +176,7 @@ Invoke-RestMethod -Uri http://localhost:5000/api/auth/me -Headers @{ Authorizati
 curl.exe -i http://localhost:5000/api/auth/me
 ```
 
-Expected: registration succeeds, login returns a token, authenticated lookup returns only safe user fields, and the final unauthenticated call returns 401. Keep tokens private. A repeated registration email returns 409. If startup fails, check that JWT_SECRET is set, MongoDB is reachable, and the user email index can be created. No login page is expected until Part 5.
+Expected: registration succeeds, login returns a token, authenticated lookup returns only safe user fields, and the final unauthenticated call returns 401. Keep tokens private. A repeated registration email returns 409. If startup fails, check that JWT_SECRET is set, MongoDB is reachable, and the user email index can be created. Login and registration pages are now available.
 
 ## Transaction APIs (Part 3)
 
@@ -300,3 +300,46 @@ Invoke-RestMethod -Uri http://localhost:5000/api/dashboard/summary -Headers $hea
 ```
 
 Create current-month transactions using Part 3's examples and verify the totals manually. Repeating PUT updates the same monthly record. Test with a second account to confirm its totals/budget are separate. If startup reports an index error, check database permissions and any duplicate existing user/month/year budget documents; do not delete application data blindly. Budget/dashboard pages are scheduled for Part 7.
+
+## Frontend Authentication and Layout (Part 5)
+
+Routes: `/login`, `/register`, `/dashboard`, `/transactions`, and `/budget`. `/` redirects according to authentication state. Guests visiting a protected route are returned to that route after successful authentication. Unknown routes retain a page-not-found screen. The authenticated navigation includes desktop links, a collapsible mobile menu, and logout. Financial pages are explicitly marked for their scheduled parts; the overview shows the real signed-in user's name and email only.
+
+AuthContext handles login/registration, persists the JWT in localStorage, and verifies saved sessions with `/api/auth/me` before showing private pages. User data is fetched from the server rather than trusted from storage. Expired/invalid sessions are cleared; logout clears local state/storage and synchronizes across tabs. API outages retain the saved token and offer retry or sign-in. The authenticated request helper clears a session on 401 and does not log tokens. Bearer-token logout is client-side; it does not revoke an already issued token on the server. Tokens expire after one day. LocalStorage is readable by same-origin scripts, so avoid untrusted scripts and HTML injection.
+
+Forms validate required fields, email format, name length, registration password minimum length, and bcrypt's 72-byte password limit. Passwords are masked. Inputs use autocomplete, associated labels, inline field errors, and disabled loading states. Server errors appear in an alert. Requests time out after 15 seconds. Backend validation remains authoritative.
+
+### Part 5 manual verification
+
+Run from the project root in separate terminals:
+
+```powershell
+npm.cmd run dev --prefix backend
+```
+
+```powershell
+npm.cmd run dev --prefix frontend
+```
+
+1. Open `/transactions` while logged out; expect login.
+2. Submit an empty form, invalid email, and short registration password; expect field errors.
+3. Register a fresh account; expect the requested protected page and signed-in navigation.
+4. Refresh; expect session restoration and the same account.
+5. Log out, then log in with wrong and correct credentials; confirm error/success.
+6. Try registration with an existing email; confirm the server error.
+7. Open a second tab and log out in the first; both should return to login.
+8. Stop the backend and refresh a logged-in page; retry must be available. Restart and retry.
+9. Check the menu, forms, long text, keyboard focus, and page widths at 320px, 768px, and desktop.
+10. Confirm `/missing` shows the not-found page, and logout prevents access to protected pages.
+
+Run `npm.cmd run build --prefix frontend` for the production build. No new application dependencies or environment values are required.
+
+### Optional repeatable browser suite
+
+`frontend/tests/auth.browser.mjs` runs against real backend APIs in a unique temporary MongoDB database and starts Vite on port 5181. It requires Microsoft Edge and an existing Playwright installation; it does not install either or add them to application dependencies. Set PLAYWRIGHT_MODULE to the absolute directory of your installed `playwright` package, then run from the project root:
+
+```powershell
+node frontend/tests/auth.browser.mjs
+```
+
+The test closes its browser and servers and removes only its own database. Screenshots are saved in ignored `frontend/.local/`. It checks validation, registration/login, private-route redirects, refresh, logout, cross-tab logout, invalid tokens, duplicate-email errors, automatic expiry, offline recovery, mobile navigation, and horizontal overflow at 320/768/1440px.
