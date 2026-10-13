@@ -73,14 +73,14 @@ export function AuthProvider({ children }) {
     setToken(result.data.token); setUser(result.data.user); setStatus('authenticated'); setError('');
   }
 
-  async function request(path, options = {}) {
+  const request = useCallback(async (path, options = {}) => {
     const requestToken = currentToken.current;
     try { return await apiRequest(path, { ...options, token: requestToken }); }
     catch (failure) {
       if (failure.status === 401 && currentToken.current === requestToken) logout();
       throw failure;
     }
-  }
+  }, [logout]);
 
   return <AuthContext.Provider value={{ user, status, error, authenticate, logout, request, retry: () => setAttempt(value => value + 1) }}>{children}</AuthContext.Provider>;
 }

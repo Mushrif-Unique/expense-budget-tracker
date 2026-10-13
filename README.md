@@ -2,13 +2,13 @@
 
 ## Project Overview
 
-A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1–5: Backend APIs and Frontend Authentication/Layout**.
+A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1–6: Backend APIs, Frontend Authentication/Layout, and Transaction UI**.
 
 ## Features
 
-Implemented: responsive login/registration pages, persistent authentication, protected application layout and navigation, logout, Express API, MongoDB connection configuration, backend authentication, user-owned transaction APIs with search and filters, monthly budgets, and dashboard calculations.
+Implemented: responsive login/registration pages, persistent authentication, protected application layout and navigation, logout, Express API, MongoDB connection configuration, backend authentication, user-owned transaction APIs with search and filters, monthly budgets, dashboard calculations, and a live transaction UI with forms, search, filters, and delete confirmation.
 
-Planned for Parts 6–9: transaction and budget pages, dashboard and charts, validation, pagination, CSV export, and submission documentation.
+Planned for Parts 7–9: budget pages, dashboard and charts, validation, pagination, CSV export, and submission documentation.
 
 ## Technologies Used
 
@@ -84,7 +84,7 @@ cd frontend
 npm.cmd run dev
 ```
 
-Open http://localhost:5173. Guests are redirected to the sign-in page. Register or sign in to open the protected workspace. Financial pages are staged for Parts 6–7; no financial values are fabricated.
+Open http://localhost:5173. Guests are redirected to the sign-in page. Register or sign in to open the protected workspace. The transaction page is live. Dashboard and budget pages are scheduled for Part 7; no financial values are fabricated.
 
 Tailwind CSS uses `@tailwindcss/vite` in `vite.config.js` and `@import "tailwindcss"` in `src/index.css`; no separate Tailwind configuration file is required for this setup.
 
@@ -147,7 +147,7 @@ The assignment author's name will be supplied during submission preparation.
 
 ## Development Progress
 
-Parts 1–5 implemented (5/9). Next: Part 6 transaction UI: create, edit, delete, history, search, and filters. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
+Parts 1–6 implemented (6/9). Next: Part 7 dashboard, monthly budget, and expense chart UI. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
 
 ## Backend Authentication (Part 2)
 
@@ -303,7 +303,7 @@ Create current-month transactions using Part 3's examples and verify the totals 
 
 ## Frontend Authentication and Layout (Part 5)
 
-Routes: `/login`, `/register`, `/dashboard`, `/transactions`, and `/budget`. `/` redirects according to authentication state. Guests visiting a protected route are returned to that route after successful authentication. Unknown routes retain a page-not-found screen. The authenticated navigation includes desktop links, a collapsible mobile menu, and logout. Financial pages are explicitly marked for their scheduled parts; the overview shows the real signed-in user's name and email only.
+Routes: `/login`, `/register`, `/dashboard`, `/transactions`, and `/budget`. `/` redirects according to authentication state. Guests visiting a protected route are returned to that route after successful authentication. Unknown routes retain a page-not-found screen. The authenticated navigation includes desktop links, a collapsible mobile menu, and logout. The transaction page is implemented; the overview and budget pages remain scheduled for Part 7. The overview currently shows the real signed-in user's name and email only.
 
 AuthContext handles login/registration, persists the JWT in localStorage, and verifies saved sessions with `/api/auth/me` before showing private pages. User data is fetched from the server rather than trusted from storage. Expired/invalid sessions are cleared; logout clears local state/storage and synchronizes across tabs. API outages retain the saved token and offer retry or sign-in. The authenticated request helper clears a session on 401 and does not log tokens. Bearer-token logout is client-side; it does not revoke an already issued token on the server. Tokens expire after one day. LocalStorage is readable by same-origin scripts, so avoid untrusted scripts and HTML injection.
 
@@ -343,3 +343,49 @@ node frontend/tests/auth.browser.mjs
 ```
 
 The test closes its browser and servers and removes only its own database. Screenshots are saved in ignored `frontend/.local/`. It checks validation, registration/login, private-route redirects, refresh, logout, cross-tab logout, invalid tokens, duplicate-email errors, automatic expiry, offline recovery, mobile navigation, and horizontal overflow at 320/768/1440px.
+
+## Transaction UI (Part 6)
+
+`/transactions` now displays the user's live transaction history, with type, category, description, calendar date, and amount. Currency display uses LKR (Sri Lankan rupees). Dates are formatted in UTC to preserve the stored calendar day; a new form defaults to today's local calendar date. No data is fabricated and no new dependencies or environment variables are required.
+
+Use Add transaction to enter income or expense. Edit opens the existing values. Both forms validate type, positive finite amount, category, description length, and calendar date before sending the request. Server validation remains authoritative. Save errors retain the entered values for correction/retry. Native modal dialogs contain keyboard focus, support Escape when idle, and prevent dismissal during a save/delete request.
+
+Search matches description or category. The type selector and exact category text filter combine with search when Apply filters is clicked; Reset clears them. Lists retain active filters after changes, so a successfully saved transaction may be hidden by the current filter. Successful actions reload data from the API. Stale list requests are aborted. Pagination and CSV export remain Part 8 work.
+
+Delete first opens an explicit confirmation. Cancel or Escape keeps the record; only Delete transaction sends DELETE. Errors remain in the confirmation for retry. Loading, success, request-failure/retry, and `No transactions found.` states are supported. An API 401 clears the session through the shared authenticated request helper.
+
+### Part 6 verification
+
+From the project root, start the backend and frontend in separate terminals:
+
+```powershell
+npm.cmd run dev --prefix backend
+```
+
+```powershell
+npm.cmd run dev --prefix frontend
+```
+
+1. Sign in and open Transactions; a new account should show an empty state.
+2. Add income and expenses under different categories. Verify amounts and dates after refresh.
+3. Combine search, type, and category filters. Test no results and Reset.
+4. Edit amount, description, date, category, and type; verify persisted values.
+5. Open Delete and Cancel; confirm the record remains. Then confirm deletion.
+6. Submit blank/zero/negative amounts or missing category/date; expect field errors.
+7. Stop the backend and apply filters; expect an error and retry option. Restart and retry.
+8. Check list/form layouts at 320px, 768px, and desktop; navigate dialogs with keyboard Tab/Escape.
+9. Sign in as another user and confirm the first user's records are absent.
+
+```powershell
+npm.cmd run build --prefix frontend
+npm.cmd test --prefix backend
+```
+
+The optional real-browser test uses the same existing Playwright/Edge setup as Part 5. With PLAYWRIGHT_MODULE set to your installed package directory:
+
+```powershell
+node frontend/tests/transactions.browser.mjs
+node frontend/tests/auth.browser.mjs
+```
+
+Tests use temporary isolated MongoDB data, temporary local servers, and headless Edge; cleanup closes these resources and deletes only the test database. The transaction suite covers CRUD, combined filters, reset, validation, persistence, date display, cancelled deletion, failed save/delete recovery, offline retry, unauthorized-session handling, and list/dialog layouts at 320/768/1440px. Screenshots are saved to ignored `frontend/.local/part6-*.png`.

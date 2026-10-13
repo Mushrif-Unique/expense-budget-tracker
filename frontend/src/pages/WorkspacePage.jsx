@@ -4,7 +4,6 @@ export default function WorkspacePage({ section }) {
   const { user } = useAuth();
   const details = {
     dashboard: ['Your personal workspace', `Welcome, ${user.name}.`, 'You are signed in securely. Your financial overview and charts are coming soon.'],
-    transactions: ['Income & expenses', 'Transactions', 'Your transaction tools are coming soon. This will be your space to review income and spending.'],
     budget: ['Plan your month', 'Monthly budget', 'Budget planning is coming soon. This will be your space to track monthly spending and progress.'],
   };
   const [eyebrow, title, message] = details[section];
