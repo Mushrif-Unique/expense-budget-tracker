@@ -2,13 +2,13 @@
 
 ## Project Overview
 
-A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1–6: Backend APIs, Frontend Authentication/Layout, and Transaction UI**.
+A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1–7: Backend APIs and Complete Core Financial UI**.
 
 ## Features
 
 Implemented: responsive login/registration pages, persistent authentication, protected application layout and navigation, logout, Express API, MongoDB connection configuration, backend authentication, user-owned transaction APIs with search and filters, monthly budgets, dashboard calculations, and a live transaction UI with forms, search, filters, and delete confirmation.
 
-Planned for Parts 7–9: budget pages, dashboard and charts, validation, pagination, CSV export, and submission documentation.
+Planned for Parts 8–9: validation and responsive audits, pagination, CSV export, final testing, and submission documentation.
 
 ## Technologies Used
 
@@ -84,7 +84,7 @@ cd frontend
 npm.cmd run dev
 ```
 
-Open http://localhost:5173. Guests are redirected to the sign-in page. Register or sign in to open the protected workspace. The transaction page is live. Dashboard and budget pages are scheduled for Part 7; no financial values are fabricated.
+Open http://localhost:5173. Guests are redirected to the sign-in page. Register or sign in to open the protected workspace. Transactions, dashboard, budget progress, and the expense chart use live API data. No financial values are fabricated.
 
 Tailwind CSS uses `@tailwindcss/vite` in `vite.config.js` and `@import "tailwindcss"` in `src/index.css`; no separate Tailwind configuration file is required for this setup.
 
@@ -147,7 +147,7 @@ The assignment author's name will be supplied during submission preparation.
 
 ## Development Progress
 
-Parts 1–6 implemented (6/9). Next: Part 7 dashboard, monthly budget, and expense chart UI. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
+Parts 1–7 implemented (7/9). Next: Part 8 validation/responsive audits, followed by pagination and CSV export after required functionality is verified. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
 
 ## Backend Authentication (Part 2)
 
@@ -299,11 +299,11 @@ Invoke-RestMethod -Method Put -Uri http://localhost:5000/api/budgets/current -He
 Invoke-RestMethod -Uri http://localhost:5000/api/dashboard/summary -Headers $headers
 ```
 
-Create current-month transactions using Part 3's examples and verify the totals manually. Repeating PUT updates the same monthly record. Test with a second account to confirm its totals/budget are separate. If startup reports an index error, check database permissions and any duplicate existing user/month/year budget documents; do not delete application data blindly. Budget/dashboard pages are scheduled for Part 7.
+Create current-month transactions using Part 3's examples and verify the totals manually. Repeating PUT updates the same monthly record. Test with a second account to confirm its totals/budget are separate. If startup reports an index error, check database permissions and any duplicate existing user/month/year budget documents; do not delete application data blindly. Budget/dashboard pages are implemented in Part 7.
 
 ## Frontend Authentication and Layout (Part 5)
 
-Routes: `/login`, `/register`, `/dashboard`, `/transactions`, and `/budget`. `/` redirects according to authentication state. Guests visiting a protected route are returned to that route after successful authentication. Unknown routes retain a page-not-found screen. The authenticated navigation includes desktop links, a collapsible mobile menu, and logout. The transaction page is implemented; the overview and budget pages remain scheduled for Part 7. The overview currently shows the real signed-in user's name and email only.
+Routes: `/login`, `/register`, `/dashboard`, `/transactions`, and `/budget`. `/` redirects according to authentication state. Guests visiting a protected route are returned to that route after successful authentication. Unknown routes retain a page-not-found screen. The authenticated navigation includes desktop links, a collapsible mobile menu, and logout. The transaction, overview, and budget pages are implemented. The overview displays real user-specific totals, recent transactions, monthly spending, and expense categories.
 
 AuthContext handles login/registration, persists the JWT in localStorage, and verifies saved sessions with `/api/auth/me` before showing private pages. User data is fetched from the server rather than trusted from storage. Expired/invalid sessions are cleared; logout clears local state/storage and synchronizes across tabs. API outages retain the saved token and offer retry or sign-in. The authenticated request helper clears a session on 401 and does not log tokens. Bearer-token logout is client-side; it does not revoke an already issued token on the server. Tokens expire after one day. LocalStorage is readable by same-origin scripts, so avoid untrusted scripts and HTML injection.
 
@@ -389,3 +389,50 @@ node frontend/tests/auth.browser.mjs
 ```
 
 Tests use temporary isolated MongoDB data, temporary local servers, and headless Edge; cleanup closes these resources and deletes only the test database. The transaction suite covers CRUD, combined filters, reset, validation, persistence, date display, cancelled deletion, failed save/delete recovery, offline retry, unauthorized-session handling, and list/dialog layouts at 320/768/1440px. Screenshots are saved to ignored `frontend/.local/part6-*.png`.
+
+## Dashboard, Budget, and Chart UI (Part 7)
+
+The overview displays all-time income, expenses, balance, current monthly budget, monthly spending progress, up to five recent transactions, and an expenses-by-category horizontal bar chart. The chart uses responsive HTML/CSS with visible category/amount labels; no chart dependency is needed. Bars are scaled relative to the largest category total. Empty accounts show zero totals, no transactions, and a no-expense-data message rather than a fabricated chart.
+
+All financial values come from the existing protected APIs. All-time cards and chart include all recorded dates; the budget uses the server's current UTC calendar month. Currency display is LKR. Negative balances are shown in red. Recent transactions preserve calendar dates and link to the full transaction page. Navigating back to a page fetches current data; Refresh overview/Refresh budget can also reload it.
+
+The budget page supports setting and updating the month's budget, including zero. Empty, negative, and nonfinite values are rejected before submission, with backend validation retained. Saving uses the returned API summary so spending, remaining amount, and percentage update together. Failed saves keep the entered amount and show a recoverable error. Loading and load-error/retry states are provided.
+
+An unset budget is labeled Not set, without a progress bar. A positive budget displays its actual used percentage, even over 100%, while the visible bar is capped at 100%. Overspending is explicitly labeled. A zero budget shows that a percentage is not applicable; any spending still appears as overspending, with a full red bar. This avoids presenting a misleading zero-percent usage indication.
+
+### Part 7 verification
+
+Start both servers from separate terminals at the project root:
+
+```powershell
+npm.cmd run dev --prefix backend
+```
+
+```powershell
+npm.cmd run dev --prefix frontend
+```
+
+1. Sign in with an empty account and check zero totals, empty transactions/chart, and an unset budget.
+2. Add income of 80000 and current-month expenses of 10000 and 20000 in different categories.
+3. Open Overview; expect income 80000, expenses 30000, balance 50000, recent records, and category bars.
+4. Save a monthly budget of 50000; expect 20000 remaining and 60% used.
+5. Change the budget to 25000; expect 120% used, 5000 overspent, and a capped red bar.
+6. Save zero; expect the zero-budget explanation and 30000 overspent without a division error.
+7. Refresh and revisit Overview to confirm persistence and updated budget values.
+8. Test blank/negative input, failed requests, and retry. Test a second user for isolated totals.
+9. Inspect dashboard/chart/budget layouts at 320px, 768px, and desktop widths.
+
+```powershell
+npm.cmd run build --prefix frontend
+npm.cmd test --prefix backend
+```
+
+Using the existing optional Playwright/Edge setup described in Part 5:
+
+```powershell
+node frontend/tests/dashboard.browser.mjs
+node frontend/tests/auth.browser.mjs
+node frontend/tests/transactions.browser.mjs
+```
+
+The dashboard suite uses isolated temporary MongoDB data and checks real API totals, empty states, category data, recent transactions, budget validation/create/update, persistence, save failure/retry, zero/overspent budgets, capped progress, API outages, second-user isolation, and responsive widths. Screenshots are saved to ignored `frontend/.local/part7-*.png`. No dependencies or environment changes are required for the application.

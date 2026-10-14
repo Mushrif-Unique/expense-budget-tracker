@@ -58,7 +58,7 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `No overflow at ${width}`);
     if (width === 320) {
       await page.getByRole('button', { name: 'Menu', exact: true }).click();
-      await page.getByRole('link', { name: 'Monthly budget' }).click();
+      await page.getByRole('link', { name: 'Monthly budget', exact: true }).click();
       await page.getByRole('heading', { name: 'Monthly budget', exact: true }).waitFor();
       await page.screenshot({ path: fileURLToPath(new URL('../.local/part5-mobile.png', import.meta.url)), fullPage: true });
     }
