@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import { transactionsCsv, collectFilteredTransactions } from '../src/utils/csv.js';
+const row = { _id: '1', date: '2026-10-14T00:00:00.000Z', type: 'expense', category: 'Food, drinks', description: 'A "quote"\nand newline', amount: 12.5, user: 'private', password: 'secret' };
+assert.equal(transactionsCsv([row]), '\uFEFF"Date","Type","Category","Description","Amount"\r\n"2026-10-14","expense","Food, drinks","A ""quote""\nand newline","12.5"\r\n');
+for (const text of ['=1+1', '+SUM(A1)', '-2+1', '@SUM(A1)', '  =1+1', '\ttext', '\ntext']) assert.ok(transactionsCsv([{ ...row, description: text }]).includes('"\'' + text + '"'));
+assert.ok(!transactionsCsv([row]).includes('private')); assert.ok(!transactionsCsv([row]).includes('secret'));
+assert.equal(transactionsCsv([]).split('\r\n').length, 2);
+const items = Array.from({ length: 205 }, (_, index) => ({ ...row, _id: String(index) }));
+const requested = [];
+const collected = await collectFilteredTransactions(async path => {
+  const params = new URL('http://test' + path).searchParams;
+  assert.equal(params.get('category'), 'Food & Drink'); assert.equal(params.get('search'), 'Lunch'); assert.equal(params.get('limit'), '100');
+  const page = Number(params.get('page')); requested.push(page);
+  return { data: { transactions: items.slice((page - 1) * 100, page * 100), pagination: { page, pages: 3, total: 205 } } };
+}, { category: 'Food & Drink', search: 'Lunch', type: 'expense' }, new AbortController().signal);
+assert.deepEqual(requested, [1, 2, 3]); assert.equal(collected.length, 205);
+await assert.rejects(collectFilteredTransactions(async () => { throw new Error('Offline'); }, {}, new AbortController().signal), /Offline/);
+let call = 0;
+await assert.rejects(collectFilteredTransactions(async () => ({ data: { transactions: [row], pagination: { page: ++call, pages: 2, total: call === 1 ? 2 : 3 } } }), {}, new AbortController().signal), /changed during export/);
+const cancelled = new AbortController(); cancelled.abort();
+await assert.rejects(collectFilteredTransactions(async () => assert.fail('No request after abort'), {}, cancelled.signal), { name: 'AbortError' });
+console.info('PASS: CSV quoting, Unicode BOM, formula neutralization, safe fields, empty CSV, 205-record export, filters, request failure, concurrent-change detection, and cancellation.');

@@ -15,7 +15,7 @@ export default function BudgetPage() {
   useEffect(() => { if (data) { setBudget(data.budget); setAmount(data.budget.isSet ? String(data.budget.amount) : ''); } }, [data]);
   async function save(event) {
     event.preventDefault(); setNotice(''); setSaveError('');
-    if (!amount.trim() || !Number.isFinite(Number(amount)) || Number(amount) < 0) { setSaveError('Enter a budget amount of zero or more.'); return; }
+    if (!amount.trim() || !Number.isFinite(Number(amount)) || Number(amount) < 0) { setSaveError('Enter a budget amount of zero or more.'); document.getElementById('budget-amount')?.focus(); return; }
     setBusy(true);
     try {
       const result = await request('/budgets/current', { method: 'PUT', body: { amount: Number(amount) } });

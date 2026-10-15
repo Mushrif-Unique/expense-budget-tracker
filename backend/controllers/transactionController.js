@@ -15,8 +15,12 @@ export async function listTransactions(req, res) {
     const expression = { $regex: escapeSearch(req.query.search.trim()), $options: 'i' };
     filter.$or = [{ description: expression }, { category: expression }];
   }
-  const transactions = await Transaction.find(filter).sort({ date: -1, _id: -1 });
-  return res.json({ success: true, message: 'Transactions retrieved', data: { transactions } });
+  const limit = Number(req.query.limit ?? 10);
+  const total = await Transaction.countDocuments(filter);
+  const pages = Math.ceil(total / limit);
+  const page = Math.min(Number(req.query.page ?? 1), Math.max(1, pages));
+  const transactions = await Transaction.find(filter).sort({ date: -1, _id: -1 }).skip((page - 1) * limit).limit(limit);
+  return res.json({ success: true, message: 'Transactions retrieved', data: { transactions, pagination: { page, limit, total, pages } } });
 }
 
 export async function createTransaction(req, res) {

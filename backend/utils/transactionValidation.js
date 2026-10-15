@@ -18,9 +18,12 @@ export function transactionFields(body) {
 }
 
 export function validateTransactionQuery(query) {
-  if (Object.keys(query).some(key => !['search', 'type', 'category'].includes(key))) return 'Supported filters are search, type, and category.';
+  if (Object.keys(query).some(key => !['search', 'type', 'category', 'page', 'limit'].includes(key))) return 'Supported query parameters are search, type, category, page, and limit.';
   for (const [key, value] of Object.entries(query)) {
     if (typeof value !== 'string' || value.trim().length > 100) return `${key} must be a single text value of at most 100 characters.`;
+  }
+  for (const [key, maximum] of [['page', 1000000], ['limit', 100]]) {
+    if (query[key] !== undefined && (!/^[1-9]\d*$/.test(query[key]) || !Number.isSafeInteger(Number(query[key])) || Number(query[key]) > maximum)) return key + ' must be a whole number from 1 to ' + maximum + '.';
   }
   if (query.type !== undefined && !['income', 'expense'].includes(query.type)) return 'Type must be income or expense.';
   return null;

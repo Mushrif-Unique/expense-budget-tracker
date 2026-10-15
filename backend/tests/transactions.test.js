@@ -81,7 +81,29 @@ try {
   await request('DELETE', path, 404, first.token);
   assert.equal((await request('GET', root, 200, first.token)).transactions.length, 1);
   assert.equal((await request('GET', root, 200, second.token)).transactions.length, 1);
-  console.info(`PASS: ${checks} transaction API checks including CRUD, validation, search/filter combinations, and two-user isolation.`);
+  await Transaction.insertMany(Array.from({ length: 25 }, (_, index) => ({ user: first.user.id, type: 'expense', amount: index + 1, category: 'Paging', description: index % 2 === 0 ? 'Match' : 'Other', date: '2026-10-01' })));
+  const firstPage = await request('GET', root, 200, first.token);
+  assert.equal(firstPage.transactions.length, 10);
+  assert.deepEqual(firstPage.pagination, { page: 1, limit: 10, total: 26, pages: 3 });
+  const secondPage = await request('GET', root + '?page=2&limit=10', 200, first.token);
+  assert.equal(secondPage.transactions.length, 10);
+  assert.ok(secondPage.transactions.every(item => !firstPage.transactions.some(first => first._id === item._id)));
+  const filteredPage = await request('GET', root + '?search=Match&type=expense&category=Paging&page=2&limit=5', 200, first.token);
+  assert.deepEqual(filteredPage.pagination, { page: 2, limit: 5, total: 13, pages: 3 });
+  assert.ok(filteredPage.transactions.every(item => item.description === 'Match' && item.user === first.user.id));
+  const lastPage = await request('GET', root + '?page=1000000', 200, first.token);
+  assert.equal(lastPage.pagination.page, 3); assert.equal(lastPage.transactions.length, 6);
+  const emptyPage = await request('GET', root + '?search=missing-value&page=2', 200, first.token);
+  assert.deepEqual(emptyPage.pagination, { page: 1, limit: 10, total: 0, pages: 0 });
+  const isolatedPage = await request('GET', root + '?page=2&limit=100', 200, second.token);
+  assert.equal(isolatedPage.pagination.total, 1); assert.equal(isolatedPage.transactions.length, 1);
+  for (const query of ['?page=0', '?page=-1', '?page=1.5', '?page=abc', '?page=', '?page=01', '?page=1000001', '?page=1&page=2', '?limit=0', '?limit=101', '?limit=-1', '?limit=1.5', '?limit=Infinity', '?limit=1&limit=2', '?page[$gt]=1']) await request('GET', root + query, 400, first.token);
+  const deletionPage = await request('GET', root + '?category=Paging&limit=12&page=3', 200, first.token);
+  assert.equal(deletionPage.transactions.length, 1);
+  await request('DELETE', root + '/' + deletionPage.transactions[0]._id, 200, first.token);
+  const recovered = await request('GET', root + '?category=Paging&limit=12&page=3', 200, first.token);
+  assert.equal(recovered.pagination.page, 2); assert.equal(recovered.pagination.total, 24);
+  console.info(`PASS: ${checks} transaction API checks including CRUD, validation, search/filter combinations, pagination, invalid query rejection, and two-user isolation.`);
 } finally {
   if (server) await new Promise(resolve => server.close(resolve));
   try {

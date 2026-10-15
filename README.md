@@ -2,13 +2,13 @@
 
 ## Project Overview
 
-A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1–7: Backend APIs and Complete Core Financial UI**.
+A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1–8: Core Application, Validation/Responsive Audit, Pagination, and CSV Export**.
 
 ## Features
 
 Implemented: responsive login/registration pages, persistent authentication, protected application layout and navigation, logout, Express API, MongoDB connection configuration, backend authentication, user-owned transaction APIs with search and filters, monthly budgets, dashboard calculations, and a live transaction UI with forms, search, filters, and delete confirmation.
 
-Planned for Parts 8–9: validation and responsive audits, pagination, CSV export, final testing, and submission documentation.
+Implemented in Part 8: validation/responsive audit, transaction pagination, and filtered CSV export. Remaining in Part 9: final integration/security review and submission preparation.
 
 ## Technologies Used
 
@@ -147,7 +147,7 @@ The assignment author's name will be supplied during submission preparation.
 
 ## Development Progress
 
-Parts 1–7 implemented (7/9). Next: Part 8 validation/responsive audits, followed by pagination and CSV export after required functionality is verified. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
+Parts 1–8 implemented (8/9). Next: Part 9 final integration/security review, documentation, demo script, and submission preparation. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
 
 ## Backend Authentication (Part 2)
 
@@ -210,7 +210,7 @@ Transactions are ordered by date descending, then ID descending. Search is a cas
 /api/transactions?search=lunch&type=expense&category=Food
 ```
 
-Blank search/category values are ignored. Invalid or repeated filter values return 400. Pagination is deferred to Part 8; unknown query keys are rejected. Empty results return an empty array. Malformed IDs return 400; missing/other-user IDs return 404. Unauthorized calls return 401. These APIs are intended for the Part 6 frontend transaction page.
+Blank search/category values are ignored. Invalid or repeated filter values return 400. Pagination accepts page and limit; unknown query keys are rejected. See Part 8 below for defaults and response metadata. Empty results return an empty array. Malformed IDs return 400; missing/other-user IDs return 404. Unauthorized calls return 401. These APIs are intended for the Part 6 frontend transaction page.
 
 ### Part 3 verification
 
@@ -350,7 +350,7 @@ The test closes its browser and servers and removes only its own database. Scree
 
 Use Add transaction to enter income or expense. Edit opens the existing values. Both forms validate type, positive finite amount, category, description length, and calendar date before sending the request. Server validation remains authoritative. Save errors retain the entered values for correction/retry. Native modal dialogs contain keyboard focus, support Escape when idle, and prevent dismissal during a save/delete request.
 
-Search matches description or category. The type selector and exact category text filter combine with search when Apply filters is clicked; Reset clears them. Lists retain active filters after changes, so a successfully saved transaction may be hidden by the current filter. Successful actions reload data from the API. Stale list requests are aborted. Pagination and CSV export remain Part 8 work.
+Search matches description or category. The type selector and exact category text filter combine with search when Apply filters is clicked; Reset clears them. Lists retain active filters after changes, so a successfully saved transaction may be hidden by the current filter. Successful actions reload data from the API. Stale list requests are aborted. Pagination and filtered CSV export are available; see Part 8 below.
 
 Delete first opens an explicit confirmation. Cancel or Escape keeps the record; only Delete transaction sends DELETE. Errors remain in the confirmation for retry. Loading, success, request-failure/retry, and `No transactions found.` states are supported. An API 401 clears the session through the shared authenticated request helper.
 
@@ -436,3 +436,55 @@ node frontend/tests/transactions.browser.mjs
 ```
 
 The dashboard suite uses isolated temporary MongoDB data and checks real API totals, empty states, category data, recent transactions, budget validation/create/update, persistence, save failure/retry, zero/overspent budgets, capped progress, API outages, second-user isolation, and responsive widths. Screenshots are saved to ignored `frontend/.local/part7-*.png`. No dependencies or environment changes are required for the application.
+
+## Pagination, CSV Export, and Audit (Part 8)
+
+Required functionality was verified before optional additions. `PART8-AUDIT.md` records the validation, error-handling, ownership, and responsive checks. Improvements include disabled-control feedback, focus on an invalid budget amount, scalable chart maximum calculation, and mobile wrapping for long account names.
+
+### Transaction pagination
+
+`GET /api/transactions` defaults to page 1 and 10 records. `page` must be an integer from 1 to 1000000; `limit` must be an integer from 1 to 100. Empty, repeated, negative, fractional, and malformed values return 400. Search, type, and category filters apply to both the records and their count. Queries remain scoped to the authenticated user.
+
+```json
+{
+  "success": true,
+  "message": "Transactions retrieved",
+  "data": {
+    "transactions": [],
+    "pagination": { "page": 1, "limit": 10, "total": 0, "pages": 0 }
+  }
+}
+```
+
+The server clamps an out-of-range page to the last available page (or page 1 for no matches). This recovers when the last record on a page is deleted. Results retain date-descending and ID-descending ordering. The UI displays 10 records, with Previous/Next controls disabled as appropriate. Applying or resetting filters starts at page 1. This changes the old unpaginated list contract; callers must follow pagination to obtain all matches.
+
+### Filtered CSV export
+
+Export CSV downloads **all matching records across all pages**, using the applied filters rather than unsubmitted form text. It uses the existing protected list API in batches of 100 and browser Blob/download APIs. There is no new endpoint or application dependency. Export is disabled during loading, errors, another export, or zero matches. Failed exports show a retry message and do not download partial data. Changing filters or leaving the page cancels an in-progress export.
+
+Only Date, Type, Category, Description, and Amount are included. Dates preserve the stored calendar day; amounts are plain numbers in LKR. Cells are quoted, embedded quotes doubled, line breaks preserved, and UTF-8 BOM/CRLF used for spreadsheet compatibility. Potential formula-leading text is prefixed with an apostrophe so spreadsheet software treats it as text. No user IDs, passwords, or tokens are exported.
+
+Export collects data in browser memory and is intended for this personal-finance assignment. It is not a database snapshot: detected count/duplicate changes during export ask the user to retry, but simultaneous edits preserving record counts cannot all be detected. Avoid editing the dataset in another tab during export.
+
+### Part 8 verification
+
+From the project root:
+
+```powershell
+npm.cmd test --prefix frontend
+npm.cmd test --prefix backend
+npm.cmd run build --prefix frontend
+```
+
+With the existing optional Playwright package path configured as PLAYWRIGHT_MODULE and Edge installed:
+
+```powershell
+node frontend/tests/pagination.browser.mjs
+node frontend/tests/auth.browser.mjs
+node frontend/tests/transactions.browser.mjs
+node frontend/tests/dashboard.browser.mjs
+```
+
+These tests use isolated temporary databases. The Part 8 browser test covers 101 records, previous/next navigation, filtered results, full-dataset and filtered CSV content, formula escaping, another user's exclusion, failed export/retry, empty results, filter reset, last-page deletion recovery, and all five pages at 320/768/1440/1920px with long names/category/description text. Screenshots are saved under ignored `frontend/.local/`.
+
+For manual checks, start the backend and frontend in separate terminals, sign in, create more than ten transactions, and visit Transactions. Check page counts and combined filters; export and compare all matching records rather than only the visible page. Delete the final record on the last page and confirm recovery. Stop/restart the API to check errors and retry. No new environment values or application dependencies are required.
