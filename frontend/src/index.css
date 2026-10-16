@@ -1,13 +1,45 @@
 @import "tailwindcss";
 
+@theme {
+  --color-stone-50: #f6f7f2;
+  --color-stone-100: #eef0e9;
+  --color-stone-200: #e0e5da;
+  --color-stone-300: #cbd3c4;
+  --color-emerald-50: #edf4e9;
+  --color-emerald-100: #dfeecf;
+  --color-emerald-200: #c6e1ac;
+  --color-emerald-300: #b8d994;
+  --color-emerald-700: #497c4c;
+  --color-emerald-800: #315c38;
+  --color-emerald-900: #23412e;
+  --color-emerald-950: #152d23;
+  --color-slate-500: #657169;
+  --color-slate-600: #526057;
+  --color-slate-700: #38473d;
+  --color-slate-900: #1f3026;
+}
 @layer base {
-  body { margin: 0; min-width: 320px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+  body { margin: 0; min-width: 320px; font-family: 'Segoe UI Variable', 'Segoe UI', ui-sans-serif, system-ui, sans-serif; color: #1f3026; background: #f6f7f2; -webkit-font-smoothing: antialiased; }
   button:not(:disabled), a { cursor: pointer; }
-  a:focus-visible, button:focus-visible { outline: 2px solid #047857; outline-offset: 4px; }
+  a:focus-visible, button:focus-visible { outline: 2px solid #6d9258; outline-offset: 4px; }
+  ::selection { background: #d6e7c2; color: #152d23; }
 }
 @layer components {
-  .form-input { @apply w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 disabled:bg-stone-100; }
+  .form-input { @apply w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-base text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 disabled:bg-stone-100; transition: border-color .18s, box-shadow .18s; }
   .form-input[aria-invalid="true"] { @apply border-red-500; }
-  .button-primary { @apply rounded-xl bg-emerald-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60; }
-  .button-secondary { @apply rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50; }
+  .button-primary { @apply rounded-xl bg-emerald-900 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60; box-shadow: 0 4px 10px #23412e12; transition: background .18s, box-shadow .18s, transform .18s; }
+  .button-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 16px #23412e24; }
+  .button-secondary { @apply rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50; transition: background .18s, border-color .18s; }
+  .panel { @apply min-w-0 rounded-2xl border border-stone-200 bg-white; box-shadow: 0 3px 12px #23352a03; }
+  .eyebrow { @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-800; }
+  .page-title { @apply mt-3 text-3xl font-semibold tracking-tight sm:text-4xl; letter-spacing: -.045em; }
+  .nav-item { @apply mb-2 flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium; transition: background .18s, color .18s; }
+  .metric-card { @apply min-w-0 rounded-2xl border border-stone-200 bg-white p-6; }
+  .metric-primary { color: #fff; background: #23412e; border-color: #23412e; background-image: radial-gradient(ellipse at 100% 0, #55795655, transparent 65%); }
+  .auth-art { background: #152d23; overflow: hidden; isolation: isolate; }
+  .auth-art::before { content: ''; position: absolute; z-index: -1; width: 720px; height: 720px; border-radius: 50%; right: -340px; bottom: -210px; border: 1px solid #b8d99435; box-shadow: 0 0 0 50px #b8d99408, 0 0 0 100px #b8d99408, 0 0 0 150px #b8d99408, 0 0 0 200px #b8d99405; }
+  .auth-art::after { content: ''; position: absolute; z-index: -1; inset: 0; background: radial-gradient(ellipse at 15% 5%, #58805555, transparent 60%); }
+  .page-enter { animation: enter .3s ease-out both; }
 }
+@keyframes enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

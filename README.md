@@ -1,51 +1,52 @@
 # Expense & Budget Tracker
 
-## Project Overview
-
-A university individual assignment for managing personal income, expenses, and monthly budgets. Development is split into exactly nine parts. This checkout implements **Parts 1–8: Core Application, Validation/Responsive Audit, Pagination, and CSV Export**.
+A personal finance application by **Mohomad Mushrif**, developed as a university individual assignment across nine parts. Track income and expenses, plan a monthly budget, and understand spending in one responsive workspace.
 
 ## Features
 
-Implemented: responsive login/registration pages, persistent authentication, protected application layout and navigation, logout, Express API, MongoDB connection configuration, backend authentication, user-owned transaction APIs with search and filters, monthly budgets, dashboard calculations, and a live transaction UI with forms, search, filters, and delete confirmation.
+- Registration, login, JWT authentication, protected pages, and logout.
+- Create, view, edit, and delete your own income and expense transactions.
+- Search descriptions/categories, combine type/category filters, and browse paginated results.
+- Export all matching transactions to CSV, with spreadsheet formula protection.
+- Set or update the current monthly budget, including zero budgets and overspending feedback.
+- Dashboard with income, expenses, balance, recent activity, and an expense-category chart.
+- Responsive ivory/green interface, keyboard focus, accessible form errors, reduced-motion support, and loading/error/retry states.
 
-Implemented in Part 8: validation/responsive audit, transaction pagination, and filtered CSV export. Remaining in Part 9: final integration/security review and submission preparation.
+## Technologies
 
-## Technologies Used
+JavaScript, React, Vite, Tailwind CSS, React Router, native Fetch, Node.js, Express, MongoDB, Mongoose, bcryptjs, and jsonwebtoken. The chart uses CSS and actual API data; no chart library or external font service is required.
 
-JavaScript, React, Vite, Tailwind CSS, React Router, Node.js, Express, MongoDB, and Mongoose. bcryptjs hashes passwords and jsonwebtoken signs and verifies backend authentication tokens. Frontend authentication is implemented in Part 5.
-
-## Project Structure
+## Project structure
 
 ```text
 frontend/
-  public/
   src/
-    components/ context/ layouts/ pages/ services/ utils/
+    components/ context/ hooks/ layouts/ pages/ services/ utils/
     App.jsx main.jsx index.css
-  .env.example index.html package.json vite.config.js
+  tests/
+  .env.example package.json vite.config.js
 backend/
-  config/ controllers/ middleware/ models/ routes/ services/ utils/
+  config/ controllers/ middleware/ models/ routes/ utils/ tests/
   .env.example app.js server.js package.json
-.gitignore
+docs/screenshots/
 README.md
+SUBMISSION.md
 ```
-
-Empty folders contain `.gitkeep` files so Git preserves the intended structure. Part 2 adds the User model and Part 3 adds the Transaction model. Part 4 adds the Budget model and shared budget calculation service.
 
 ## Installation
 
-Prerequisites: Node.js 22.12+ (Node 24 LTS recommended), npm, and a running local MongoDB server or a MongoDB Atlas connection. Run the following PowerShell commands from the project root after cloning. Copy environment files only on first setup; do not overwrite existing configured files.
+Requires Node.js 22.12+ (Node 24 recommended), npm, and local MongoDB or an Atlas database. From the project root in PowerShell:
 
 ```powershell
 npm.cmd ci --prefix backend
 npm.cmd ci --prefix frontend
-Copy-Item backend/.env.example backend/.env
-Copy-Item frontend/.env.example frontend/.env
+if (!(Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
+if (!(Test-Path frontend/.env)) { Copy-Item frontend/.env.example frontend/.env }
 ```
 
-## Environment Variables
+### Environment variables
 
-`backend/.env`:
+Configure `backend/.env`:
 
 ```dotenv
 PORT=5000
@@ -54,437 +55,143 @@ JWT_SECRET=
 CLIENT_URL=http://localhost:5173
 ```
 
-`JWT_SECRET` must contain a private random value of at least 32 characters. On a fresh setup, generate a private value using `node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"` and save it only in `backend/.env`. Never commit it. Replace MONGODB_URI if using Atlas; do not put credentials in `.env.example`.
+Generate a private secret and paste it into JWT_SECRET before starting the backend:
 
-`frontend/.env`:
+```powershell
+node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
+```
+
+The secret must contain at least 32 characters. Keep it and any Atlas credentials only in your private environment file. For Atlas, replace MONGODB_URI and configure network/database access. Local MongoDB needs to be installed and running separately.
+
+Configure `frontend/.env`:
 
 ```dotenv
 VITE_API_URL=http://localhost:5000/api
 ```
 
-Vite exposes `VITE_` values publicly; never put secrets there. Restart the relevant server after changing environment files. CLIENT_URL must match the frontend origin, without a trailing slash.
+VITE_ variables are public browser configuration: never place secrets in them. CLIENT_URL must match the frontend origin exactly, without a trailing slash. Restart servers after changing environment files.
 
-## Running the Backend
+## Running the application
 
-In a terminal at the project root:
+Backend, from a terminal in the project root:
 
 ```powershell
 cd backend
 npm.cmd run dev
 ```
 
-Expected startup: `MongoDB connected.` followed by the API listening on port 5000. The HTTP server starts only after a successful database connection. `npm.cmd start` runs without watch mode.
-
-## Running the Frontend
-
-In a separate terminal at the project root:
+Frontend, from a second terminal in the project root:
 
 ```powershell
 cd frontend
 npm.cmd run dev
 ```
 
-Open http://localhost:5173. Guests are redirected to the sign-in page. Register or sign in to open the protected workspace. Transactions, dashboard, budget progress, and the expense chart use live API data. No financial values are fabricated.
+Open http://localhost:5173 and create an account. The backend starts listening only after MongoDB connects and required indexes initialize. `npm.cmd start` inside backend runs without watch mode.
 
-Tailwind CSS uses `@tailwindcss/vite` in `vite.config.js` and `@import "tailwindcss"` in `src/index.css`; no separate Tailwind configuration file is required for this setup.
+### Build
 
-## API Overview
-
-`GET /api/health` returns HTTP 200:
-
-```json
-{
-  "success": true,
-  "message": "Expense & Budget Tracker API is running"
-}
+```powershell
+npm.cmd run build --prefix frontend
+npm.cmd run preview --prefix frontend -- --port 5173
 ```
 
-Unknown routes return HTTP 404 and a consistent JSON error. Invalid JSON returns 400. Oversized request bodies return 413. The health route is a basic liveness endpoint; it is not a continuous database-readiness monitor.
+Stop the frontend development server before previewing on its port. Keep the backend running. A production host must serve the frontend with SPA route fallback and configure the correct API URL, HTTPS, and CORS origin.
+
+## API overview
+
+All routes except health, registration, and login require `Authorization: Bearer <token>`. Responses use `success`, `message`, and, where applicable, `data`. Ownership comes from the authenticated user, never a client-supplied user ID.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | /api/health | API liveness |
+| POST | /api/auth/register | Create account and return token/user |
+| POST | /api/auth/login | Authenticate and return token/user |
+| GET | /api/auth/me | Current user |
+| GET | /api/transactions | Filtered, paginated transactions |
+| POST | /api/transactions | Create transaction |
+| GET | /api/transactions/:id | Read owned transaction |
+| PUT | /api/transactions/:id | Replace editable transaction fields |
+| DELETE | /api/transactions/:id | Delete owned transaction |
+| GET | /api/budgets/current | Current monthly budget and spending |
+| PUT | /api/budgets/current | Create/update current budget |
+| GET | /api/dashboard/summary | Totals, recent transactions, categories, budget |
+
+Registration accepts name, email, password; login accepts email, password. Passwords require at least 8 characters at registration and at most 72 UTF-8 bytes. Emails are normalized and unique. JWTs expire after one day.
+
+Transaction create/update accepts type (`income` or `expense`), positive numeric amount, category (1–100 characters), optional description (up to 1,000 characters), and date (`YYYY-MM-DD`). PUT requires the complete editable record. Category filtering is case-insensitive exact matching; search is a literal case-insensitive match in category/description. Query parameters: search, type, category, page (1–1,000,000), limit (1–100; default 10). List data contains `transactions` and `pagination: { page, limit, total, pages }`. Out-of-range pages clamp to the last available page.
+
+Budget PUT accepts only `{ "amount": 60000 }`, with zero or more allowed. Budgets use the current **UTC calendar month**; only expenses dated within that month count. A missing budget differs from a saved zero budget. Overspending is shown explicitly; the visual progress bar caps at 100%. Dashboard totals/chart cover all recorded dates. Currency display is LKR, rounded to two decimal places.
+
+Malformed JSON returns 400, bodies exceeding 10 KB return 413, invalid/expired authentication returns 401, and missing/unowned transactions return 404. Health is a liveness endpoint, not continuous database readiness.
 
 ## Verification
 
-With both servers running, use a third terminal:
+With MongoDB available and backend/.env configured, from the project root:
 
 ```powershell
-Invoke-RestMethod http://localhost:5000/api/health
-curl.exe -i http://localhost:5000/api/missing
+npm.cmd test --prefix backend
+npm.cmd test --prefix frontend
 npm.cmd run build --prefix frontend
-node --check backend/server.js
-node --check backend/app.js
-node --check backend/config/db.js
 ```
 
-Confirm the startup log reports MongoDB connected. Check registration, login, refresh persistence, mobile navigation, logout, and protected-route redirects. Open `/missing` and use Return home. Test at 320px, tablet, and desktop widths. During an API outage, restoring a saved session shows retry and sign-in options.
+Backend tests use uniquely named temporary databases and remove only their own data. They need a database user with permission to create/drop test databases; use a development MongoDB instance.
 
-Common errors:
-
-- MongoDB connection failed: confirm the MongoDB service is running and MONGODB_URI is correct. For Atlas, check network access and credentials.
-- Port already in use: stop the conflicting process or change PORT and VITE_API_URL together. If changing the frontend port, also update CLIENT_URL and Vite's server port.
-- API unreachable/CORS: check both environment files, start both servers, and use the exact frontend origin configured in CLIENT_URL.
-- Unsupported Node engine: use Node.js 22.12+.
-- PowerShell blocks npm.ps1: use the documented `npm.cmd` commands.
-- Git reports dubious ownership after sandbox initialization: use `git -c safe.directory="D:/Gamage Projects/expense-budget-tracker" status` (and the same `-c` option for add/commit) for this known workspace, without changing global Git settings.
-
-## Git Workflow
-
-If the folder has not been initialized, run `git init` once. Review files before committing:
+Browser tests additionally require Microsoft Edge and Playwright. Install Playwright into a separate local tools folder if it is not already available:
 
 ```powershell
-git status --short
-git add .
-git commit -m "chore: initialize full-stack expense tracker project"
+npm.cmd install --prefix "$env:LOCALAPPDATA/expense-tracker-test-tools" playwright
+$env:PLAYWRIGHT_MODULE = "$env:LOCALAPPDATA/expense-tracker-test-tools/node_modules/playwright"
+node frontend/tests/auth.browser.mjs
+node frontend/tests/transactions.browser.mjs
+node frontend/tests/dashboard.browser.mjs
+node frontend/tests/pagination.browser.mjs
+node frontend/tests/journey.browser.mjs
 ```
 
-`.env`, dependencies, logs, and build output are ignored; example environment files and lockfiles should be committed. Continue one part at a time and create a meaningful commit after each part.
+Run browser suites sequentially with port 5181 free. Each starts and stops its own temporary API/Vite servers and isolates database data. The journey suite regenerates the four README screenshots with synthetic demo data; no demo account is inserted into the application database. Other captures go to ignored frontend/.local/.
+
+See [final verification results](FINAL-REVIEW.md) and the [demo script](DEMO-SCRIPT.md).
 
 ## Screenshots
 
-Final screenshots will be captured after the corresponding pages are implemented: login/register, dashboard, transactions, and budget.
+Captured from the implemented application with isolated demo data.
 
-## Author
+### Sign in
 
-The assignment author's name will be supplied during submission preparation.
+![Sign-in screen](docs/screenshots/login.png)
 
-## Development Progress
+### Dashboard
 
-Parts 1–8 implemented (8/9). Next: Part 9 final integration/security review, documentation, demo script, and submission preparation. Wait for explicit `continue` before beginning the next part. Frontend authentication is Part 5, transaction UI Part 6, dashboard/budget/chart UI Part 7, polish and optional features Part 8, and final submission preparation Part 9.
+![Dashboard](docs/screenshots/dashboard.png)
 
-## Backend Authentication (Part 2)
+### Transactions
 
-- `POST /api/auth/register`: JSON `{ "name": "Demo User", "email": "demo@example.com", "password": "ExamplePass123!" }`; returns 201 with `data.user` and `data.token`.
-- `POST /api/auth/login`: JSON email and password; returns 200 with the same safe user/token shape. Invalid credentials return 401.
-- `GET /api/auth/me`: send `Authorization: Bearer <token>`; returns 200 with `data.user`, or 401 for missing, invalid, expired tokens or deleted users.
+![Transactions](docs/screenshots/transactions.png)
 
-Emails are trimmed and lowercased, with a unique MongoDB index. Names are 1–100 trimmed characters; passwords require at least 8 characters and at most 72 UTF-8 bytes (bcrypt's input limit). Passwords are hashed with bcrypt cost 12 and omitted from responses. JWTs use HS256 and expire after one day. Registration rejects duplicate emails with 409, including concurrent requests. Validation failures return 400. Unexpected failures return a generic 500 response.
+### Monthly budget
 
-Run the repeatable integration suite from the project root:
+![Monthly budget](docs/screenshots/budget.png)
 
-```powershell
-npm.cmd test --prefix backend
-```
+## Troubleshooting
 
-Tests use the configured MongoDB server but a unique `expense_tracker_auth_test_...` database, then remove only that database. The MongoDB account must permit creation and deletion of the test database. Application data is not used. Tests cover registration/login, validation, duplicate races, password hashing, safe responses, token failures, deleted users, health, and error handling.
+- Database connection fails: start MongoDB and verify MONGODB_URI; for Atlas check access rules and credentials.
+- Backend startup fails: check PORT, CLIENT_URL, JWT_SECRET, MongoDB availability, and unique indexes.
+- Port occupied: stop the conflicting server or update PORT/VITE_API_URL together. Frontend port changes also require CLIENT_URL and Vite configuration changes.
+- API/CORS failure: start both servers, use the configured frontend origin, and restart after environment changes.
+- PowerShell blocks npm.ps1: use npm.cmd as documented.
+- Git reports dubious ownership: for this known checkout, use `git -c safe.directory="D:/Gamage Projects/expense-budget-tracker" status` and the same per-command option for add/commit. No global Git configuration change is required.
 
-Manual PowerShell verification (start the backend first; use a fresh email for registration):
+## Security and limits
 
-```powershell
-$body = @{ name = 'Demo User'; email = 'demo@example.com'; password = 'ExamplePass123!' } | ConvertTo-Json
-$registration = Invoke-RestMethod -Method Post -Uri http://localhost:5000/api/auth/register -ContentType 'application/json' -Body $body
-$credentials = @{ email = 'demo@example.com'; password = 'ExamplePass123!' } | ConvertTo-Json
-$login = Invoke-RestMethod -Method Post -Uri http://localhost:5000/api/auth/login -ContentType 'application/json' -Body $credentials
-Invoke-RestMethod -Uri http://localhost:5000/api/auth/me -Headers @{ Authorization = "Bearer $($login.data.token)" }
-curl.exe -i http://localhost:5000/api/auth/me
-```
+Passwords are hashed with bcrypt, JWT verification allows HS256 only, and protected data queries are scoped to the authenticated user. Error responses do not expose passwords, tokens, connection strings, or stack traces. Environment files, dependencies, build output, and local test artifacts are ignored by Git.
 
-Expected: registration succeeds, login returns a token, authenticated lookup returns only safe user fields, and the final unauthenticated call returns 401. Keep tokens private. A repeated registration email returns 409. If startup fails, check that JWT_SECRET is set, MongoDB is reachable, and the user email index can be created. Login and registration pages are now available.
+This assignment stores the JWT in localStorage, so preventing script injection remains essential. Logout removes the browser token but does not revoke an already copied token before expiry. There is no login rate limiting or password-reset flow. Deployments need additional operational hardening. CSV export detects some concurrent changes but does not provide a database snapshot. Monetary inputs are JavaScript numbers; displayed totals are rounded, not a full accounting ledger.
 
-## Transaction APIs (Part 3)
+## Author and submission
 
-Every endpoint requires `Authorization: Bearer <token>`. The authenticated user owns every operation. A transaction belonging to another user returns the same 404 response as a missing transaction.
+**Mohomad Mushrif**
 
-| Method | Route | Result |
-| --- | --- | --- |
-| GET | /api/transactions | 200, `data.transactions` |
-| POST | /api/transactions | 201, `data.transaction` |
-| GET | /api/transactions/:id | 200, `data.transaction` |
-| PUT | /api/transactions/:id | 200, `data.transaction` |
-| DELETE | /api/transactions/:id | 200, `data: null` |
+[Public GitHub repository](https://github.com/Mushrif-Unique/expense-budget-tracker)
 
-Create and update accept the following complete payload (description may be omitted):
 
-```json
-{
-  "type": "expense",
-  "amount": 125.50,
-  "category": "Food",
-  "description": "Lunch",
-  "date": "2026-10-07"
-}
-```
-
-Type must be `income` or `expense`. Amount must be a finite JSON number greater than zero, not a quoted number. Category is required and limited to 100 trimmed characters. Description is optional and limited to 1000 trimmed characters. Dates must be real calendar dates in `YYYY-MM-DD` format; they are stored as UTC midnight. When displaying dates later, preserve the calendar date rather than shifting it into a local timezone. PUT replaces all editable fields; omitted description becomes empty text. User IDs, timestamps, database operators, and other extra fields are rejected.
-
-Transactions are ordered by date descending, then ID descending. Search is a case-insensitive literal substring match on description or category. Category filtering is a case-insensitive exact match. Filters can be combined:
-
-```text
-/api/transactions?search=lunch&type=expense&category=Food
-```
-
-Blank search/category values are ignored. Invalid or repeated filter values return 400. Pagination accepts page and limit; unknown query keys are rejected. See Part 8 below for defaults and response metadata. Empty results return an empty array. Malformed IDs return 400; missing/other-user IDs return 404. Unauthorized calls return 401. These APIs are intended for the Part 6 frontend transaction page.
-
-### Part 3 verification
-
-From the project root:
-
-```powershell
-npm.cmd test --prefix backend
-npm.cmd run test:transactions --prefix backend
-npm.cmd run build --prefix frontend
-```
-
-The full test command runs authentication and transaction suites; the second command runs only transaction checks when needed. Each suite uses a uniquely named temporary database and removes only its own database afterward. Tests cover two-user isolation, all CRUD operations, combined filters, literal regex characters, validation, malformed IDs, unknown IDs, and attempts to supply ownership fields.
-
-For manual checks, start the backend with `npm.cmd run dev --prefix backend`, then log in using the authentication instructions above. With `$login` populated, run:
-
-```powershell
-$headers = @{ Authorization = "Bearer $($login.data.token)" }
-$body = @{ type = 'expense'; amount = 125.50; category = 'Food'; description = 'Lunch'; date = '2026-10-07' } | ConvertTo-Json
-$created = Invoke-RestMethod -Method Post -Uri http://localhost:5000/api/transactions -Headers $headers -ContentType 'application/json' -Body $body
-$transactionId = $created.data.transaction._id
-Invoke-RestMethod -Uri "http://localhost:5000/api/transactions/$transactionId" -Headers $headers
-Invoke-RestMethod -Uri 'http://localhost:5000/api/transactions?search=lunch&type=expense&category=Food' -Headers $headers
-$updated = @{ type = 'expense'; amount = 150; category = 'Food'; description = 'Updated lunch'; date = '2026-10-07' } | ConvertTo-Json
-Invoke-RestMethod -Method Put -Uri "http://localhost:5000/api/transactions/$transactionId" -Headers $headers -ContentType 'application/json' -Body $updated
-# Deletes only the demonstration transaction created above.
-Invoke-RestMethod -Method Delete -Uri "http://localhost:5000/api/transactions/$transactionId" -Headers $headers
-```
-
-Repeat lookup/update/delete with a second account's token before deleting to confirm 404 and that the first user's record remains unchanged. Do not put tokens or database credentials in Git. No additional dependency installation or environment variables are needed for Part 3.
-
-## Budgets and Dashboard (Part 4)
-
-All three endpoints require the user's Bearer token:
-
-| Method | Route | Result |
-| --- | --- | --- |
-| GET | /api/budgets/current | 200, `data.budget` |
-| PUT | /api/budgets/current | 200, `data.budget` (create or update) |
-| GET | /api/dashboard/summary | 200, dashboard fields in `data` |
-
-PUT accepts only `{ "amount": 50000 }`. Amount must be a finite JSON number greater than or equal to zero. The server determines the user, month, and year; supplying these in the body is rejected with 400. A unique user/month/year database index prevents duplicates, including concurrent first saves. Startup waits for the budget index to be ready. No new packages or environment values are required.
-
-The current month uses **UTC calendar boundaries**, from the first day inclusive to the next month's first day exclusive, matching the UTC calendar dates stored by the transaction API. This does not depend on the computer's timezone. Only expenses dated in this month count toward the budget; income and other months are excluded.
-
-Example budget response fields:
-
-```json
-{
-  "isSet": true,
-  "month": 10,
-  "year": 2026,
-  "amount": 50000,
-  "monthlyExpenses": 30000,
-  "remaining": 20000,
-  "overspent": 0,
-  "progressPercentage": 60
-}
-```
-
-No saved budget returns `isSet: false`, null amount/remaining/progress, zero overspent, and the actual monthly expenses. A saved zero budget returns `isSet: true`, amount 0 and progress 0; spending is still reported as overspent and negative remaining. For positive budgets, progress may exceed 100%; the future UI should cap only the visual bar. Example: 30000 spent against 25000 returns remaining -5000, overspent 5000, and progress 120.
-
-Dashboard fields are `totalIncome`, `totalExpenses`, `balance`, `recentTransactions`, `expensesByCategory`, and `budget`. Totals and category sums cover **all recorded transaction dates**, including future-dated records; only the nested budget is current-month-specific. Balance is income minus expenses. Recent transactions contain at most five records sorted by transaction date descending, with ID descending for ties. Category entries contain `category` and `total`, use the stored category labels, and sort by total descending. Empty accounts return zero totals and empty arrays. All reads and aggregations are scoped to the authenticated user.
-
-MongoDB sums amounts as decimals before returning totals rounded to two decimal places. Remaining, balance, and budget percentage are also rounded to two decimals. Numeric amounts remain JSON numbers, consistent with Part 3.
-
-### Part 4 verification
-
-From the project root, with MongoDB running:
-
-```powershell
-npm.cmd test --prefix backend
-# To run only the budget/dashboard suite:
-npm.cmd run test:budgets --prefix backend
-npm.cmd run build --prefix frontend
-```
-
-Tests use isolated, uniquely named temporary databases and delete only their own test databases. They cover empty accounts, invalid budgets, no-token/invalid-token requests, create/update, zero budgets, overspending, concurrent saves, uniqueness, monthly boundaries, December/January rollover, leap-year boundaries, decimal sums, dashboard totals, category totals, recent-date order, and user isolation.
-
-Manual API checks after logging in as described above:
-
-```powershell
-$headers = @{ Authorization = "Bearer $($login.data.token)" }
-Invoke-RestMethod -Uri http://localhost:5000/api/budgets/current -Headers $headers
-$body = @{ amount = 50000 } | ConvertTo-Json
-Invoke-RestMethod -Method Put -Uri http://localhost:5000/api/budgets/current -Headers $headers -ContentType 'application/json' -Body $body
-Invoke-RestMethod -Uri http://localhost:5000/api/dashboard/summary -Headers $headers
-```
-
-Create current-month transactions using Part 3's examples and verify the totals manually. Repeating PUT updates the same monthly record. Test with a second account to confirm its totals/budget are separate. If startup reports an index error, check database permissions and any duplicate existing user/month/year budget documents; do not delete application data blindly. Budget/dashboard pages are implemented in Part 7.
-
-## Frontend Authentication and Layout (Part 5)
-
-Routes: `/login`, `/register`, `/dashboard`, `/transactions`, and `/budget`. `/` redirects according to authentication state. Guests visiting a protected route are returned to that route after successful authentication. Unknown routes retain a page-not-found screen. The authenticated navigation includes desktop links, a collapsible mobile menu, and logout. The transaction, overview, and budget pages are implemented. The overview displays real user-specific totals, recent transactions, monthly spending, and expense categories.
-
-AuthContext handles login/registration, persists the JWT in localStorage, and verifies saved sessions with `/api/auth/me` before showing private pages. User data is fetched from the server rather than trusted from storage. Expired/invalid sessions are cleared; logout clears local state/storage and synchronizes across tabs. API outages retain the saved token and offer retry or sign-in. The authenticated request helper clears a session on 401 and does not log tokens. Bearer-token logout is client-side; it does not revoke an already issued token on the server. Tokens expire after one day. LocalStorage is readable by same-origin scripts, so avoid untrusted scripts and HTML injection.
-
-Forms validate required fields, email format, name length, registration password minimum length, and bcrypt's 72-byte password limit. Passwords are masked. Inputs use autocomplete, associated labels, inline field errors, and disabled loading states. Server errors appear in an alert. Requests time out after 15 seconds. Backend validation remains authoritative.
-
-### Part 5 manual verification
-
-Run from the project root in separate terminals:
-
-```powershell
-npm.cmd run dev --prefix backend
-```
-
-```powershell
-npm.cmd run dev --prefix frontend
-```
-
-1. Open `/transactions` while logged out; expect login.
-2. Submit an empty form, invalid email, and short registration password; expect field errors.
-3. Register a fresh account; expect the requested protected page and signed-in navigation.
-4. Refresh; expect session restoration and the same account.
-5. Log out, then log in with wrong and correct credentials; confirm error/success.
-6. Try registration with an existing email; confirm the server error.
-7. Open a second tab and log out in the first; both should return to login.
-8. Stop the backend and refresh a logged-in page; retry must be available. Restart and retry.
-9. Check the menu, forms, long text, keyboard focus, and page widths at 320px, 768px, and desktop.
-10. Confirm `/missing` shows the not-found page, and logout prevents access to protected pages.
-
-Run `npm.cmd run build --prefix frontend` for the production build. No new application dependencies or environment values are required.
-
-### Optional repeatable browser suite
-
-`frontend/tests/auth.browser.mjs` runs against real backend APIs in a unique temporary MongoDB database and starts Vite on port 5181. It requires Microsoft Edge and an existing Playwright installation; it does not install either or add them to application dependencies. Set PLAYWRIGHT_MODULE to the absolute directory of your installed `playwright` package, then run from the project root:
-
-```powershell
-node frontend/tests/auth.browser.mjs
-```
-
-The test closes its browser and servers and removes only its own database. Screenshots are saved in ignored `frontend/.local/`. It checks validation, registration/login, private-route redirects, refresh, logout, cross-tab logout, invalid tokens, duplicate-email errors, automatic expiry, offline recovery, mobile navigation, and horizontal overflow at 320/768/1440px.
-
-## Transaction UI (Part 6)
-
-`/transactions` now displays the user's live transaction history, with type, category, description, calendar date, and amount. Currency display uses LKR (Sri Lankan rupees). Dates are formatted in UTC to preserve the stored calendar day; a new form defaults to today's local calendar date. No data is fabricated and no new dependencies or environment variables are required.
-
-Use Add transaction to enter income or expense. Edit opens the existing values. Both forms validate type, positive finite amount, category, description length, and calendar date before sending the request. Server validation remains authoritative. Save errors retain the entered values for correction/retry. Native modal dialogs contain keyboard focus, support Escape when idle, and prevent dismissal during a save/delete request.
-
-Search matches description or category. The type selector and exact category text filter combine with search when Apply filters is clicked; Reset clears them. Lists retain active filters after changes, so a successfully saved transaction may be hidden by the current filter. Successful actions reload data from the API. Stale list requests are aborted. Pagination and filtered CSV export are available; see Part 8 below.
-
-Delete first opens an explicit confirmation. Cancel or Escape keeps the record; only Delete transaction sends DELETE. Errors remain in the confirmation for retry. Loading, success, request-failure/retry, and `No transactions found.` states are supported. An API 401 clears the session through the shared authenticated request helper.
-
-### Part 6 verification
-
-From the project root, start the backend and frontend in separate terminals:
-
-```powershell
-npm.cmd run dev --prefix backend
-```
-
-```powershell
-npm.cmd run dev --prefix frontend
-```
-
-1. Sign in and open Transactions; a new account should show an empty state.
-2. Add income and expenses under different categories. Verify amounts and dates after refresh.
-3. Combine search, type, and category filters. Test no results and Reset.
-4. Edit amount, description, date, category, and type; verify persisted values.
-5. Open Delete and Cancel; confirm the record remains. Then confirm deletion.
-6. Submit blank/zero/negative amounts or missing category/date; expect field errors.
-7. Stop the backend and apply filters; expect an error and retry option. Restart and retry.
-8. Check list/form layouts at 320px, 768px, and desktop; navigate dialogs with keyboard Tab/Escape.
-9. Sign in as another user and confirm the first user's records are absent.
-
-```powershell
-npm.cmd run build --prefix frontend
-npm.cmd test --prefix backend
-```
-
-The optional real-browser test uses the same existing Playwright/Edge setup as Part 5. With PLAYWRIGHT_MODULE set to your installed package directory:
-
-```powershell
-node frontend/tests/transactions.browser.mjs
-node frontend/tests/auth.browser.mjs
-```
-
-Tests use temporary isolated MongoDB data, temporary local servers, and headless Edge; cleanup closes these resources and deletes only the test database. The transaction suite covers CRUD, combined filters, reset, validation, persistence, date display, cancelled deletion, failed save/delete recovery, offline retry, unauthorized-session handling, and list/dialog layouts at 320/768/1440px. Screenshots are saved to ignored `frontend/.local/part6-*.png`.
-
-## Dashboard, Budget, and Chart UI (Part 7)
-
-The overview displays all-time income, expenses, balance, current monthly budget, monthly spending progress, up to five recent transactions, and an expenses-by-category horizontal bar chart. The chart uses responsive HTML/CSS with visible category/amount labels; no chart dependency is needed. Bars are scaled relative to the largest category total. Empty accounts show zero totals, no transactions, and a no-expense-data message rather than a fabricated chart.
-
-All financial values come from the existing protected APIs. All-time cards and chart include all recorded dates; the budget uses the server's current UTC calendar month. Currency display is LKR. Negative balances are shown in red. Recent transactions preserve calendar dates and link to the full transaction page. Navigating back to a page fetches current data; Refresh overview/Refresh budget can also reload it.
-
-The budget page supports setting and updating the month's budget, including zero. Empty, negative, and nonfinite values are rejected before submission, with backend validation retained. Saving uses the returned API summary so spending, remaining amount, and percentage update together. Failed saves keep the entered amount and show a recoverable error. Loading and load-error/retry states are provided.
-
-An unset budget is labeled Not set, without a progress bar. A positive budget displays its actual used percentage, even over 100%, while the visible bar is capped at 100%. Overspending is explicitly labeled. A zero budget shows that a percentage is not applicable; any spending still appears as overspending, with a full red bar. This avoids presenting a misleading zero-percent usage indication.
-
-### Part 7 verification
-
-Start both servers from separate terminals at the project root:
-
-```powershell
-npm.cmd run dev --prefix backend
-```
-
-```powershell
-npm.cmd run dev --prefix frontend
-```
-
-1. Sign in with an empty account and check zero totals, empty transactions/chart, and an unset budget.
-2. Add income of 80000 and current-month expenses of 10000 and 20000 in different categories.
-3. Open Overview; expect income 80000, expenses 30000, balance 50000, recent records, and category bars.
-4. Save a monthly budget of 50000; expect 20000 remaining and 60% used.
-5. Change the budget to 25000; expect 120% used, 5000 overspent, and a capped red bar.
-6. Save zero; expect the zero-budget explanation and 30000 overspent without a division error.
-7. Refresh and revisit Overview to confirm persistence and updated budget values.
-8. Test blank/negative input, failed requests, and retry. Test a second user for isolated totals.
-9. Inspect dashboard/chart/budget layouts at 320px, 768px, and desktop widths.
-
-```powershell
-npm.cmd run build --prefix frontend
-npm.cmd test --prefix backend
-```
-
-Using the existing optional Playwright/Edge setup described in Part 5:
-
-```powershell
-node frontend/tests/dashboard.browser.mjs
-node frontend/tests/auth.browser.mjs
-node frontend/tests/transactions.browser.mjs
-```
-
-The dashboard suite uses isolated temporary MongoDB data and checks real API totals, empty states, category data, recent transactions, budget validation/create/update, persistence, save failure/retry, zero/overspent budgets, capped progress, API outages, second-user isolation, and responsive widths. Screenshots are saved to ignored `frontend/.local/part7-*.png`. No dependencies or environment changes are required for the application.
-
-## Pagination, CSV Export, and Audit (Part 8)
-
-Required functionality was verified before optional additions. `PART8-AUDIT.md` records the validation, error-handling, ownership, and responsive checks. Improvements include disabled-control feedback, focus on an invalid budget amount, scalable chart maximum calculation, and mobile wrapping for long account names.
-
-### Transaction pagination
-
-`GET /api/transactions` defaults to page 1 and 10 records. `page` must be an integer from 1 to 1000000; `limit` must be an integer from 1 to 100. Empty, repeated, negative, fractional, and malformed values return 400. Search, type, and category filters apply to both the records and their count. Queries remain scoped to the authenticated user.
-
-```json
-{
-  "success": true,
-  "message": "Transactions retrieved",
-  "data": {
-    "transactions": [],
-    "pagination": { "page": 1, "limit": 10, "total": 0, "pages": 0 }
-  }
-}
-```
-
-The server clamps an out-of-range page to the last available page (or page 1 for no matches). This recovers when the last record on a page is deleted. Results retain date-descending and ID-descending ordering. The UI displays 10 records, with Previous/Next controls disabled as appropriate. Applying or resetting filters starts at page 1. This changes the old unpaginated list contract; callers must follow pagination to obtain all matches.
-
-### Filtered CSV export
-
-Export CSV downloads **all matching records across all pages**, using the applied filters rather than unsubmitted form text. It uses the existing protected list API in batches of 100 and browser Blob/download APIs. There is no new endpoint or application dependency. Export is disabled during loading, errors, another export, or zero matches. Failed exports show a retry message and do not download partial data. Changing filters or leaving the page cancels an in-progress export.
-
-Only Date, Type, Category, Description, and Amount are included. Dates preserve the stored calendar day; amounts are plain numbers in LKR. Cells are quoted, embedded quotes doubled, line breaks preserved, and UTF-8 BOM/CRLF used for spreadsheet compatibility. Potential formula-leading text is prefixed with an apostrophe so spreadsheet software treats it as text. No user IDs, passwords, or tokens are exported.
-
-Export collects data in browser memory and is intended for this personal-finance assignment. It is not a database snapshot: detected count/duplicate changes during export ask the user to retry, but simultaneous edits preserving record counts cannot all be detected. Avoid editing the dataset in another tab during export.
-
-### Part 8 verification
-
-From the project root:
-
-```powershell
-npm.cmd test --prefix frontend
-npm.cmd test --prefix backend
-npm.cmd run build --prefix frontend
-```
-
-With the existing optional Playwright package path configured as PLAYWRIGHT_MODULE and Edge installed:
-
-```powershell
-node frontend/tests/pagination.browser.mjs
-node frontend/tests/auth.browser.mjs
-node frontend/tests/transactions.browser.mjs
-node frontend/tests/dashboard.browser.mjs
-```
-
-These tests use isolated temporary databases. The Part 8 browser test covers 101 records, previous/next navigation, filtered results, full-dataset and filtered CSV content, formula escaping, another user's exclusion, failed export/retry, empty results, filter reset, last-page deletion recovery, and all five pages at 320/768/1440/1920px with long names/category/description text. Screenshots are saved under ignored `frontend/.local/`.
-
-For manual checks, start the backend and frontend in separate terminals, sign in, create more than ten transactions, and visit Transactions. Check page counts and combined filters; export and compare all matching records rather than only the visible page. Delete the final record on the last page and confirm recovery. Stop/restart the API to check errors and retry. No new environment values or application dependencies are required.

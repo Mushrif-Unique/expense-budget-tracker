@@ -7,7 +7,7 @@ export function budgetMonth(budget) {
 export default function BudgetProgress({ budget }) {
   const percentage = budget.progressPercentage ?? 0;
   const visual = budget.amount === 0 && budget.overspent > 0 ? 100 : Math.min(100, Math.max(0, percentage));
-  return <section aria-label="Budget progress" className="rounded-2xl border border-stone-200 bg-white p-6 sm:p-8">
+  return <section aria-label="Budget progress" className="panel p-6 sm:p-8">
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Monthly spending</h2><span className="text-sm text-slate-500">{budgetMonth(budget)}</span></div>
     <p className="mt-6 break-all text-3xl font-semibold tabular-nums">{formatAmount(budget.monthlyExpenses)}</p>
     <p className="mt-2 text-sm text-slate-500">{budget.isSet ? `of ${formatAmount(budget.amount)} budget` : 'No budget set for this month.'}</p>

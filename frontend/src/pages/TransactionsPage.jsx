@@ -69,7 +69,7 @@ export default function TransactionsPage() {
     setFilters({ search: draft.search.trim(), type: draft.type, category: draft.category.trim() });
   }
   return <>
-    <div className="flex flex-wrap items-end justify-between gap-5"><div><p className="text-xs font-semibold uppercase tracking-widest text-emerald-800">Income & expenses</p><h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Transactions</h1><p className="mt-3 text-slate-500">Keep track of the money coming in and going out.</p></div><button className="button-primary" onClick={() => { setNotice(''); setEditor({ transaction: null }); }}>Add transaction</button></div>
+    <div className="flex flex-wrap items-end justify-between gap-5"><div><p className="eyebrow">Income & expenses</p><h1 className="page-title">Transactions</h1><p className="mt-3 text-slate-500">Keep track of the money coming in and going out.</p></div><button className="button-primary" onClick={() => { setNotice(''); setEditor({ transaction: null }); }}>Add transaction</button></div>
     {notice && <p role="status" className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">{notice} Active filters still apply.</p>}
     <form onSubmit={apply} className="mt-8 grid items-end gap-4 rounded-2xl border border-stone-200 bg-white p-5 xl:grid-cols-[2fr_1fr_1fr_auto]">
       <div><label htmlFor="search" className="mb-2 block text-sm font-medium">Search</label><input id="search" className="form-input" placeholder="Description or category" maxLength={100} value={draft.search} onChange={event => setDraft({ ...draft, search: event.target.value })} /></div>
